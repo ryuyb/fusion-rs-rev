@@ -429,6 +429,148 @@ mod core_property_tests {
 
 
 #[cfg(test)]
+mod dynamic_config_property_tests {
+    use crate::logger::LogLevelHandle;
+    use proptest::prelude::*;
+    use std::sync::Arc;
+    use tracing_subscriber::{layer::SubscriberExt, reload, EnvFilter};
+
+    /// Helper to create a LogLevelHandle and run a test with a properly initialized subscriber
+    fn with_test_handle<F, R>(initial_level: &str, f: F) -> R
+    where
+        F: FnOnce(&LogLevelHandle) -> R,
+    {
+        let filter = EnvFilter::try_new(initial_level).unwrap_or_else(|_| EnvFilter::new("info"));
+        let (filter_layer, reload_handle) = reload::Layer::new(filter);
+        
+        // Create a subscriber with the reload layer
+        let subscriber = tracing_subscriber::registry()
+            .with(filter_layer)
+            .with(tracing_subscriber::fmt::layer().with_writer(std::io::sink));
+        
+        let handle = LogLevelHandle {
+            inner: Arc::new(reload_handle),
+        };
+        
+        // Run the test with the subscriber active
+        tracing::subscriber::with_default(subscriber, || f(&handle))
+    }
+
+    proptest! {
+        /// Property 18: 动态配置更新
+        /// *For any* valid log level, updating the log level at runtime SHALL succeed
+        /// and the new level SHALL be reflected in subsequent queries.
+        /// **Validates: Requirements 9.5**
+        #[test]
+        fn property_dynamic_config_valid_level_update(
+            level_idx in 0usize..5usize
+        ) {
+            let valid_levels = ["trace", "debug", "info", "warn", "error"];
+            let new_level = valid_levels[level_idx];
+
+            // Create a handle with a different initial level
+            let initial_level = if level_idx == 0 { "info" } else { "trace" };
+            
+            with_test_handle(initial_level, |handle| {
+                // Update to the new level should succeed
+                let result = handle.set_level(new_level);
+                prop_assert!(result.is_ok(), "Setting valid level '{}' should succeed, got: {:?}", new_level, result);
+
+                // Current level should reflect the update
+                if let Some(current) = handle.current_level() {
+                    prop_assert!(
+                        current.to_lowercase().contains(&new_level.to_lowercase()),
+                        "Current level '{}' should contain '{}'", current, new_level
+                    );
+                }
+                Ok(())
+            })?;
+        }
+
+        /// Property 18: 动态配置更新 - Empty level should be handled
+        /// *For any* empty or whitespace-only level string, the behavior should be consistent.
+        /// **Validates: Requirements 9.2, 9.5**
+        #[test]
+        fn property_dynamic_config_empty_level_handling(
+            whitespace_count in 0usize..5usize
+        ) {
+            // Test empty and whitespace-only strings
+            let empty_level = " ".repeat(whitespace_count);
+
+            with_test_handle("info", |handle| {
+                // Empty/whitespace levels may succeed (EnvFilter is permissive)
+                // or fail - the key is that it doesn't panic
+                let result = handle.set_level(&empty_level);
+                
+                // Whether it succeeds or fails, it should not panic
+                // and if it fails, the error should be descriptive
+                if let Err(err) = result {
+                    let err_msg = err.to_string();
+                    prop_assert!(
+                        !err_msg.is_empty(),
+                        "Error message should not be empty"
+                    );
+                }
+                Ok(())
+            })?;
+        }
+
+        /// Property 18: 动态配置更新 - Multiple updates should work
+        /// *For any* sequence of valid level updates, each update SHALL succeed
+        /// and the final level SHALL be the last one set.
+        /// **Validates: Requirements 9.5**
+        #[test]
+        fn property_dynamic_config_multiple_updates(
+            level_indices in prop::collection::vec(0usize..5usize, 2..5)
+        ) {
+            let valid_levels = ["trace", "debug", "info", "warn", "error"];
+            
+            with_test_handle("info", |handle| {
+                // Apply multiple level updates
+                for &idx in &level_indices {
+                    let level = valid_levels[idx];
+                    let result = handle.set_level(level);
+                    prop_assert!(result.is_ok(), "Setting level '{}' should succeed", level);
+                }
+
+                // Final level should be the last one set
+                let final_level = valid_levels[*level_indices.last().unwrap()];
+                if let Some(current) = handle.current_level() {
+                    prop_assert!(
+                        current.to_lowercase().contains(&final_level.to_lowercase()),
+                        "Final level '{}' should contain '{}'", current, final_level
+                    );
+                }
+                Ok(())
+            })?;
+        }
+
+        /// Property 18: 动态配置更新 - EnvFilter syntax support
+        /// *For any* valid EnvFilter syntax, the update SHALL succeed.
+        /// **Validates: Requirements 9.5**
+        #[test]
+        fn property_dynamic_config_envfilter_syntax(
+            base_level_idx in 0usize..5usize,
+            module_level_idx in 0usize..5usize
+        ) {
+            let valid_levels = ["trace", "debug", "info", "warn", "error"];
+            let base_level = valid_levels[base_level_idx];
+            let module_level = valid_levels[module_level_idx];
+
+            // Create EnvFilter-style level string
+            let filter_string = format!("{},test_module={}", base_level, module_level);
+
+            with_test_handle("info", |handle| {
+                // Update with EnvFilter syntax should succeed
+                let result = handle.set_level(&filter_string);
+                prop_assert!(result.is_ok(), "Setting EnvFilter syntax '{}' should succeed, got: {:?}", filter_string, result);
+                Ok(())
+            })?;
+        }
+    }
+}
+
+#[cfg(test)]
 mod error_handling_property_tests {
     use super::*;
     use proptest::prelude::*;

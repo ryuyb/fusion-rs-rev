@@ -11,7 +11,7 @@ async fn main() -> anyhow::Result<()> {
     config.file.enabled = true;
     config.file.append = false;
     config.file.format = LogFormat::Json;
-    init_logger(config)?;
+    let handle = init_logger(config)?;
 
     println!("Hello, world!");
     tracing::trace!("Hello, world!");
@@ -32,6 +32,10 @@ async fn main() -> anyhow::Result<()> {
     // The span will be exited when _enter is dropped
 
     tracing::info!("Outside the span");
+
+    handle.set_level("info")?;
+    tracing::debug!("Hello, world after change!");
+    tracing::info!("Hello, world after change!");
 
     Ok(())
 }
