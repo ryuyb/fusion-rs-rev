@@ -8,9 +8,10 @@
 //! - Error recovery strategies (fallback to console, cleanup and retry)
 //! - Runtime log level modification
 
+#![allow(dead_code)]
+
 pub mod compression;
 pub mod config;
-pub mod error;
 pub mod rotation;
 pub(crate) mod writer;
 
