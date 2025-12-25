@@ -1,4 +1,9 @@
+mod db;
+mod error;
 mod logger;
+mod models;
+mod repositories;
+mod schema;
 
 use logger::{LoggerConfig, init_logger};
 use crate::logger::LogFormat;

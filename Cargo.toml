@@ -6,6 +6,9 @@ edition = "2024"
 [dependencies]
 axum = { version = "0.8", features = ["json", "tracing"] }
 tokio = { version = "1.0", features = ["full"] }
+diesel = { version = "2.3", features = ["postgres", "chrono"] }
+diesel-async = { version = "0.7", features = ["postgres", "bb8"] }
+thiserror = "2.0"
 
 # Core logging dependencies
 tracing = "0.1"
