@@ -35,7 +35,7 @@ use writer::RotatingFileWriter;
 /// Handle for modifying the log level at runtime
 /// 
 /// This handle can be cloned and shared across threads safely.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LogLevelHandle {
     inner: Arc<reload::Handle<EnvFilter, tracing_subscriber::Registry>>,
 }
@@ -96,8 +96,9 @@ impl LogLevelHandle {
 pub fn init_logger(config: LoggerConfig) -> anyhow::Result<LogLevelHandle> {
     config.validate()?;
 
-    // Create filter from level string
-    let filter = EnvFilter::try_new(&config.level).unwrap_or_else(|_| EnvFilter::new("info"));
+    // Create filter from level string - validation already passed, so this should not fail
+    let filter = EnvFilter::try_new(&config.level)
+        .map_err(|e| anyhow::anyhow!("Failed to create log filter: {}", e))?;
 
     match (config.console.enabled, config.file.enabled) {
         (true, true) => init_both(&config, filter),
@@ -180,57 +181,29 @@ fn init_both(config: &LoggerConfig, filter: EnvFilter) -> anyhow::Result<LogLeve
     // leaking into file output. This is a known tracing-subscriber behavior where
     // span field formatting is affected by the first layer's ANSI setting.
     // See: https://github.com/tokio-rs/tracing/issues/1817
+    //
+    // Note: Due to tracing-subscriber's type system, we cannot share the console_layer
+    // across match arms - each branch needs its own layer instance.
     match config.file.format {
         LogFormat::Full => {
-            let file_layer = fmt::layer()
-                .with_ansi(false)
-                .with_target(true)
-                .with_writer(writer);
-
-            let console_layer = fmt::layer()
-                .with_ansi(use_ansi)
-                .with_target(true)
-                .with_level(true);
-
             tracing_subscriber::registry()
                 .with(filter_layer)
-                .with(file_layer)
-                .with(console_layer)
+                .with(fmt::layer().with_ansi(false).with_target(true).with_writer(writer))
+                .with(fmt::layer().with_ansi(use_ansi).with_target(true).with_level(true))
                 .init();
         }
         LogFormat::Compact => {
-            let file_layer = fmt::layer()
-                .with_ansi(false)
-                .with_target(true)
-                .compact()
-                .with_writer(writer);
-
-            let console_layer = fmt::layer()
-                .with_ansi(use_ansi)
-                .with_target(true)
-                .with_level(true);
-
             tracing_subscriber::registry()
                 .with(filter_layer)
-                .with(file_layer)
-                .with(console_layer)
+                .with(fmt::layer().with_ansi(false).with_target(true).compact().with_writer(writer))
+                .with(fmt::layer().with_ansi(use_ansi).with_target(true).with_level(true))
                 .init();
         }
         LogFormat::Json => {
-            let file_layer = fmt::layer()
-                .with_ansi(false)
-                .json()
-                .with_writer(writer);
-
-            let console_layer = fmt::layer()
-                .with_ansi(use_ansi)
-                .with_target(true)
-                .with_level(true);
-
             tracing_subscriber::registry()
                 .with(filter_layer)
-                .with(file_layer)
-                .with(console_layer)
+                .with(fmt::layer().with_ansi(false).json().with_writer(writer))
+                .with(fmt::layer().with_ansi(use_ansi).with_target(true).with_level(true))
                 .init();
         }
     }

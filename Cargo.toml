@@ -11,8 +11,6 @@ tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "json", "env-filter"] }
 anyhow = "1.0"
-thiserror = "2.0"
-is-terminal = "0.4"
 
 # Time and serialization
 chrono = { version = "0.4", features = ["serde"] }
@@ -25,6 +23,4 @@ flate2 = "1.0"
 [dev-dependencies]
 proptest = "1.0"
 tempfile = "3.0"
-assert_fs = "1.0"
-predicates = "3.0"
-tracing-test = "0.2"
+filetime = "0.2"

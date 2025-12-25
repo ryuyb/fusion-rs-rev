@@ -40,7 +40,7 @@ impl RotationManager {
     /// Check if time-based rotation should occur
     fn check_time_rotation(&self, time_unit: &TimeUnit) -> bool {
         let now = Utc::now();
-        let duration = chrono::Duration::seconds(time_unit.duration_seconds() as i64);
+        let duration = time_unit.duration_from(self.last_rotation_time);
         now.signed_duration_since(self.last_rotation_time) >= duration
     }
 
@@ -208,14 +208,25 @@ mod tests {
             let dir = tempdir().unwrap();
             let base_path = dir.path().join("test.log");
 
-            // Create initial rotated files with different timestamps
+            // Create initial rotated files with different modification times
+            // Use explicit timestamps instead of sleep for reliability
             for i in 0..initial_file_count {
                 let rotated_name = format!("test.{:04}.log", i);
                 let rotated_path = dir.path().join(&rotated_name);
                 let mut file = fs::File::create(&rotated_path).unwrap();
                 writeln!(file, "content {}", i).unwrap();
-                // Add small delay to ensure different modification times
-                std::thread::sleep(std::time::Duration::from_millis(10));
+                
+                // Set modification time explicitly using filetime
+                // Earlier files get older timestamps
+                let base_time = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs();
+                let file_time = filetime::FileTime::from_unix_time(
+                    (base_time - (initial_file_count - i) as u64 * 60) as i64,
+                    0
+                );
+                filetime::set_file_mtime(&rotated_path, file_time).unwrap();
             }
 
             // Create the main log file

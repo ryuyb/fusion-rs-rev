@@ -3,7 +3,7 @@
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
 
 /// Handles compression of rotated log files
@@ -17,13 +17,13 @@ impl CompressionHandler {
     }
 
     /// Compress a file using gzip compression
+    /// 
+    /// Uses streaming compression to handle large files efficiently without
+    /// loading the entire file into memory.
     pub fn compress_file(&self, file_path: &Path) -> anyhow::Result<()> {
         if !self.enabled {
             return Ok(());
         }
-
-        // Read the original file
-        let input = fs::read(file_path)?;
 
         // Create compressed file path
         let compressed_path = file_path.with_extension(
@@ -34,13 +34,20 @@ impl CompressionHandler {
             .trim_start_matches('.'),
         );
 
-        // Compress and write
-        let output_file = File::create(&compressed_path)?;
-        let mut encoder = GzEncoder::new(output_file, Compression::default());
-        encoder.write_all(&input)?;
-        encoder.finish()?;
+        // Use streaming compression to handle large files efficiently
+        {
+            let input_file = File::open(file_path)?;
+            let input_reader = BufReader::new(input_file);
+            
+            let output_file = File::create(&compressed_path)?;
+            let output_writer = BufWriter::new(output_file);
+            let mut encoder = GzEncoder::new(output_writer, Compression::default());
+            
+            std::io::copy(&mut BufReader::new(input_reader), &mut encoder)?;
+            encoder.finish()?.flush()?;
+        }
 
-        // Remove original file
+        // Remove original file only after successful compression
         fs::remove_file(file_path)?;
 
         Ok(())

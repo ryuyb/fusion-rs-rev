@@ -210,12 +210,8 @@ impl RotatingWriterGuard {
             callback(&error);
         }
 
-        // Check if this is a disk space error
-        let is_disk_space_error = error.raw_os_error() == Some(28) // ENOSPC on Unix
-            || error.raw_os_error() == Some(112) // ERROR_DISK_FULL on Windows
-            || error.to_string().to_lowercase().contains("no space")
-            || error.to_string().to_lowercase().contains("disk full")
-            || error.to_string().to_lowercase().contains("quota exceeded");
+        // Check if this is a disk space error using error kind and OS-specific codes
+        let is_disk_space_error = Self::is_disk_space_error(&error);
 
         match self.recovery_strategy {
             RecoveryStrategy::CleanupAndRetry => {
@@ -268,6 +264,30 @@ impl RotatingWriterGuard {
                 Ok(buf.len())
             }
         }
+    }
+
+    /// Check if an error indicates disk space exhaustion
+    /// 
+    /// Uses both error kind matching and OS-specific error codes for reliability.
+    #[cfg(unix)]
+    fn is_disk_space_error(error: &io::Error) -> bool {
+        // ENOSPC = 28 on most Unix systems
+        // EDQUOT = 122 on Linux (disk quota exceeded)
+        matches!(error.raw_os_error(), Some(28) | Some(122))
+            || error.kind() == io::ErrorKind::StorageFull
+    }
+
+    #[cfg(windows)]
+    fn is_disk_space_error(error: &io::Error) -> bool {
+        // ERROR_DISK_FULL = 112
+        // ERROR_HANDLE_DISK_FULL = 39
+        matches!(error.raw_os_error(), Some(112) | Some(39))
+            || error.kind() == io::ErrorKind::StorageFull
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    fn is_disk_space_error(error: &io::Error) -> bool {
+        error.kind() == io::ErrorKind::StorageFull
     }
 }
 

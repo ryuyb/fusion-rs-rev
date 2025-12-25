@@ -161,20 +161,14 @@ impl FileConfig {
     }
 
     /// Validate file configuration
+    /// 
+    /// Note: This is a pure validation function that does not create directories.
+    /// Directory creation is handled by the writer during initialization.
     pub fn validate(&self) -> Result<()> {
         if self.enabled {
             // Validate path is not empty
             if self.path.as_os_str().is_empty() {
                 anyhow::bail!("File path cannot be empty when file output is enabled");
-            }
-
-            // Validate parent directory can be created
-            if let Some(parent) = self.path.parent() {
-                if !parent.as_os_str().is_empty() && !parent.exists() {
-                    // Check if we can create the directory
-                    std::fs::create_dir_all(parent)
-                        .with_context(|| format!("Cannot create directory: {}", parent.display()))?;
-                }
             }
 
             // Validate rotation config
@@ -219,9 +213,9 @@ impl Default for FileConfig {
     fn default() -> Self {
         Self {
             enabled: false,
-            path: PathBuf::from("app.log"),
+            path: PathBuf::from("logs/app.log"),
             append: true,
-            format: LogFormat::Full,
+            format: LogFormat::Json,
             rotation: RotationConfig::default(),
         }
     }
@@ -241,9 +235,10 @@ impl Default for LogFormat {
     }
 }
 
-impl LogFormat {
-    /// Parse log format from string
-    pub fn from_str(s: &str) -> Result<Self> {
+impl std::str::FromStr for LogFormat {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "full" => Ok(LogFormat::Full),
             "compact" => Ok(LogFormat::Compact),
@@ -251,7 +246,9 @@ impl LogFormat {
             _ => anyhow::bail!("Invalid log format '{}'. Valid formats are: full, compact, json", s),
         }
     }
+}
 
+impl LogFormat {
     /// Convert to string representation
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -389,12 +386,37 @@ impl TimeUnit {
     }
 
     /// Get duration in seconds for the time unit
+    /// 
+    /// Note: Monthly uses calendar-aware calculation via `duration_from_now()` for accuracy.
+    /// This method returns a fixed approximation (30 days) for backward compatibility.
     pub fn duration_seconds(&self) -> u64 {
         match self {
             TimeUnit::Hourly => 3600,
             TimeUnit::Daily => 86400,
             TimeUnit::Weekly => 604800,
-            TimeUnit::Monthly => 2592000, // Approximate 30 days
+            TimeUnit::Monthly => 30 * 86400, // 30 days approximation
+        }
+    }
+
+    /// Get the actual duration from a given timestamp, accounting for calendar variations
+    /// 
+    /// This is more accurate for Monthly rotation as it considers actual month lengths.
+    pub fn duration_from(&self, from: chrono::DateTime<chrono::Utc>) -> chrono::Duration {
+        use chrono::{Duration, Months};
+        
+        match self {
+            TimeUnit::Hourly => Duration::hours(1),
+            TimeUnit::Daily => Duration::days(1),
+            TimeUnit::Weekly => Duration::weeks(1),
+            TimeUnit::Monthly => {
+                // Calculate actual duration to next month
+                if let Some(next_month) = from.checked_add_months(Months::new(1)) {
+                    next_month.signed_duration_since(from)
+                } else {
+                    // Fallback to 30 days if overflow
+                    Duration::days(30)
+                }
+            }
         }
     }
 }
@@ -516,6 +538,7 @@ mod tests {
 
     #[test]
     fn test_log_format_parsing() {
+        use std::str::FromStr;
         assert_eq!(LogFormat::from_str("full").unwrap(), LogFormat::Full);
         assert_eq!(LogFormat::from_str("compact").unwrap(), LogFormat::Compact);
         assert_eq!(LogFormat::from_str("json").unwrap(), LogFormat::Json);
