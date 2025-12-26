@@ -3,11 +3,11 @@
 //! Provides HTTP handlers for user management operations.
 
 use crate::api::doc::USER_TAG;
-use crate::api::dto::{CreateUserRequest, UpdateUserRequest, UserResponse};
+use crate::api::dto::{CreateUserRequest, PagedResponse, PaginationParams, UpdateUserRequest, UserResponse};
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     Json,
 };
@@ -33,22 +33,33 @@ pub fn user_routes() -> OpenApiRouter<AppState> {
 
 /// GET /api/users - List all users
 ///
-/// Returns a JSON array of all users.
+/// Returns a paginated JSON response of users.
 #[utoipa::path(
     get,
     path = "/",
     tag = USER_TAG,
+    params(PaginationParams),
     responses(
-        (status = 200, description = "List users by page", body = Vec<UserResponse>)
+        (status = 200, description = "List users by page", body = PagedResponse<UserResponse>)
     ),
     security(
         ("bearerAuth" = [])
     )
 )]
-async fn list_users(State(state): State<AppState>) -> AppResult<Json<Vec<UserResponse>>> {
-    let users = state.services.users.list_users().await?;
+async fn list_users(
+    State(state): State<AppState>,
+    Query(params): Query<PaginationParams>,
+) -> AppResult<Json<PagedResponse<UserResponse>>> {
+    let params = params.validate();
+    let (users, total_count) = state.services.users.list_users_paginated(
+        params.offset() as i64,
+        params.limit() as i64,
+    ).await?;
+    
     let responses: Vec<UserResponse> = users.into_iter().map(UserResponse::from).collect();
-    Ok(Json(responses))
+    let paged_response = PagedResponse::new(responses, &params, total_count as u64);
+    
+    Ok(Json(paged_response))
 }
 
 /// GET /api/users/:id - Get user by ID

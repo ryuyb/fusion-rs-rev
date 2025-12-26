@@ -103,6 +103,38 @@ impl UserRepository {
             .map_err(AppError::from)
     }
 
+    /// Lists users with pagination.
+    ///
+    /// # Arguments
+    /// * `offset` - Number of records to skip
+    /// * `limit` - Maximum number of records to return
+    ///
+    /// # Returns
+    /// A tuple of (users, total_count)
+    pub async fn list_paginated(&self, offset: i64, limit: i64) -> AppResult<(Vec<User>, i64)> {
+        use crate::schema::users::dsl::*;
+        let mut conn = self.pool.get().await
+            .map_err(|e| AppError::ConnectionPool { source: anyhow::Error::from(e) })?;
+
+        // Get the paginated users
+        let users_result = users
+            .select(User::as_select())
+            .offset(offset)
+            .limit(limit)
+            .load(&mut conn)
+            .await
+            .map_err(AppError::from)?;
+
+        // Get the total count
+        let total_count = users
+            .count()
+            .get_result::<i64>(&mut conn)
+            .await
+            .map_err(AppError::from)?;
+
+        Ok((users_result, total_count))
+    }
+
     /// Updates a user's data.
     ///
     /// # Arguments

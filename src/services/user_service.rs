@@ -71,6 +71,18 @@ impl UserService {
         self.repo.list_all().await
     }
 
+    /// Lists users with pagination.
+    ///
+    /// # Arguments
+    /// * `offset` - Number of records to skip
+    /// * `limit` - Maximum number of records to return
+    ///
+    /// # Returns
+    /// A tuple of (users, total_count)
+    pub async fn list_users_paginated(&self, offset: i64, limit: i64) -> AppResult<(Vec<User>, i64)> {
+        self.repo.list_paginated(offset, limit).await
+    }
+
     /// Updates a user's data.
     ///
     /// # Arguments
