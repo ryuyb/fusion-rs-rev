@@ -44,8 +44,8 @@ pub fn create_router(state: AppState) -> Router {
         // Middleware is applied in reverse order - last added runs first
         // So: global_error_handler -> request_id -> logging
         .layer(middleware::from_fn(logging_middleware))
-        .layer(middleware::from_fn(request_id_middleware))
         .layer(middleware::from_fn(global_error_handler))
+        .layer(middleware::from_fn(request_id_middleware))
         .with_state(state)
 }
 

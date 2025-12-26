@@ -10,8 +10,6 @@ pub struct ErrorResponse {
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub details: Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub request_id: Option<String>,
 }
 
 impl ErrorResponse {
@@ -21,20 +19,12 @@ impl ErrorResponse {
             code: code.to_string(),
             message: message.to_string(),
             details: None,
-            request_id: None,
         }
     }
 
     /// Adds details to the error response.
     pub fn with_details(mut self, details: Value) -> Self {
         self.details = Some(details);
-        self
-    }
-
-    /// Adds request ID to the error response for correlation.
-    #[allow(dead_code)]
-    pub fn with_request_id(mut self, request_id: &str) -> Self {
-        self.request_id = Some(request_id.to_string());
         self
     }
 
@@ -47,7 +37,6 @@ impl ErrorResponse {
                 "field": field,
                 "reason": reason
             })),
-            request_id: None,
         }
     }
 
@@ -61,7 +50,6 @@ impl ErrorResponse {
                 "field": field,
                 "value": value
             })),
-            request_id: None,
         }
     }
 
@@ -75,7 +63,6 @@ impl ErrorResponse {
                 "field": field,
                 "value": value
             })),
-            request_id: None,
         }
     }
 }
@@ -91,7 +78,6 @@ mod tests {
         assert_eq!(error.code, "TEST_ERROR");
         assert_eq!(error.message, "Test message");
         assert!(error.details.is_none());
-        assert!(error.request_id.is_none());
     }
 
     #[test]
@@ -103,16 +89,6 @@ mod tests {
         assert_eq!(error.message, "Test message");
         assert!(error.details.is_some());
         assert_eq!(error.details.unwrap(), json!({"key": "value"}));
-    }
-
-    #[test]
-    fn test_error_response_with_request_id() {
-        let error = ErrorResponse::new("TEST_ERROR", "Test message")
-            .with_request_id("req-123");
-        
-        assert_eq!(error.code, "TEST_ERROR");
-        assert_eq!(error.message, "Test message");
-        assert_eq!(error.request_id.unwrap(), "req-123");
     }
 
     #[test]
@@ -158,8 +134,7 @@ mod tests {
 
     #[test]
     fn test_serialization_round_trip() {
-        let original = ErrorResponse::validation_error("email", "invalid format")
-            .with_request_id("req-456");
+        let original = ErrorResponse::validation_error("email", "invalid format");
         
         let json_str = serde_json::to_string(&original).unwrap();
         let deserialized: ErrorResponse = serde_json::from_str(&json_str).unwrap();
@@ -167,6 +142,5 @@ mod tests {
         assert_eq!(original.code, deserialized.code);
         assert_eq!(original.message, deserialized.message);
         assert_eq!(original.details, deserialized.details);
-        assert_eq!(original.request_id, deserialized.request_id);
     }
 }
