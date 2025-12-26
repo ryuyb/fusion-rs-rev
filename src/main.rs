@@ -1,4 +1,5 @@
 mod api;
+pub mod cli;
 mod config;
 mod db;
 mod error;
@@ -12,7 +13,9 @@ mod state;
 pub use state::AppState;
 
 use api::routes::create_router;
-use config::{ConfigLoader, Environment};
+use cli::{Cli, Commands, ConfigurationMerger, CommandHandler};
+use clap::Parser;
+use config::{Environment, settings::Settings};
 use db::establish_async_connection_pool;
 use logger::init_logger;
 use tokio::net::TcpListener;
@@ -20,13 +23,106 @@ use tokio::signal;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Load configuration from files and environment variables
-    let loader = ConfigLoader::new()?;
-    let settings = loader.load()?;
+    // Parse CLI arguments
+    let cli = Cli::parse();
 
-    // Convert LoggerSettings to LoggerConfig and initialize the logger
-    let logger_config = settings.logger.clone().into_logger_config()?;
-    let _handle = init_logger(logger_config)?;
+    // Load base configuration from files and environment variables
+    let merger = match ConfigurationMerger::from_config_path(cli.config.as_ref()) {
+        Ok(merger) => merger,
+        Err(e) => {
+            eprintln!("Configuration error: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    // Merge CLI arguments with configuration
+    let settings = match merger.merge_cli_args(&cli) {
+        Ok(settings) => settings,
+        Err(e) => {
+            eprintln!("Configuration merge error: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    // Initialize logger early for CLI commands (before command validation)
+    let logger_config = match settings.logger.clone().into_logger_config() {
+        Ok(config) => config,
+        Err(e) => {
+            eprintln!("Logger configuration error: {}", e);
+            std::process::exit(1);
+        }
+    };
+    let _handle = match init_logger(logger_config) {
+        Ok(handle) => handle,
+        Err(e) => {
+            eprintln!("Logger initialization error: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    // Create command handler for dispatching CLI commands
+    let command_handler = CommandHandler::new(settings.clone());
+
+    // Validate CLI arguments and configuration
+    if let Err(e) = command_handler.validate_command_args(&cli) {
+        tracing::error!("Command validation error: {}", e);
+        std::process::exit(1);
+    }
+
+    // Dispatch based on command type
+    match cli.command.as_ref() {
+        Some(Commands::Serve { dry_run, .. }) => {
+            // Handle serve command (including dry-run)
+            if *dry_run {
+                match command_handler.handle_serve(true).await {
+                    Ok(()) => {
+                        tracing::info!("Dry-run validation completed successfully");
+                        return Ok(());
+                    }
+                    Err(e) => {
+                        tracing::error!("Dry-run validation failed: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+            // Continue with normal server startup below
+        }
+        Some(Commands::Migrate { dry_run, rollback }) => {
+            // Handle migrate command and exit
+            match command_handler.handle_migrate(*dry_run, *rollback).await {
+                Ok(()) => {
+                    tracing::info!("Migration operation completed successfully");
+                    return Ok(());
+                }
+                Err(e) => {
+                    tracing::error!("Migration operation failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        None => {
+            // No command specified, default to serve behavior
+            tracing::info!("No command specified, starting server with default behavior");
+            // Continue with normal server startup below
+        }
+    }
+
+    // Server startup logic (for serve command or default behavior)
+    match start_server(settings).await {
+        Ok(()) => {
+            tracing::info!("Server shutdown completed successfully");
+            Ok(())
+        }
+        Err(e) => {
+            tracing::error!("Server error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+/// Start the web server with the given configuration
+async fn start_server(settings: Settings) -> anyhow::Result<()> {
+    // Logger is already initialized in main(), so we skip logger initialization here
 
     // Log application startup information
     tracing::info!(

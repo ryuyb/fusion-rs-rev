@@ -87,5 +87,45 @@ impl From<diesel::result::Error> for AppError {
     }
 }
 
+impl From<crate::config::error::ConfigError> for AppError {
+    fn from(error: crate::config::error::ConfigError) -> Self {
+        match error {
+            crate::config::error::ConfigError::ValidationError { field, message } => {
+                AppError::Validation { field, reason: message }
+            }
+            crate::config::error::ConfigError::FileNotFound(path) => {
+                AppError::Configuration {
+                    key: "config_file".to_string(),
+                    source: anyhow::anyhow!("Configuration file not found: {}", path),
+                }
+            }
+            crate::config::error::ConfigError::ParseError(msg) => {
+                AppError::Configuration {
+                    key: "config_parse".to_string(),
+                    source: anyhow::anyhow!("Configuration parse error: {}", msg),
+                }
+            }
+            crate::config::error::ConfigError::EnvVarError(msg) => {
+                AppError::Configuration {
+                    key: "environment_variable".to_string(),
+                    source: anyhow::anyhow!("Environment variable error: {}", msg),
+                }
+            }
+            crate::config::error::ConfigError::MutualExclusivityError(msg) => {
+                AppError::Configuration {
+                    key: "mutual_exclusivity".to_string(),
+                    source: anyhow::anyhow!("Mutual exclusivity error: {}", msg),
+                }
+            }
+            crate::config::error::ConfigError::Other(config_err) => {
+                AppError::Configuration {
+                    key: "config_crate".to_string(),
+                    source: anyhow::anyhow!("Config crate error: {}", config_err),
+                }
+            }
+        }
+    }
+}
+
 /// Type alias for Result with AppError to simplify function signatures
 pub type AppResult<T> = Result<T, AppError>;

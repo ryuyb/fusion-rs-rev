@@ -4,4 +4,4 @@
 
 mod pool;
 
-pub use pool::{establish_async_connection_pool, AsyncDbPool};
+pub use pool::{establish_async_connection_pool, AsyncDbPool, MIGRATIONS};
