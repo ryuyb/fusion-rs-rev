@@ -105,6 +105,7 @@ pub async fn auth_middleware(
 ///     .route("/optional", get(handler))
 ///     .layer(middleware::from_fn_with_state(state.clone(), optional_auth_middleware))
 /// ```
+#[allow(dead_code)]
 pub async fn optional_auth_middleware(
     State(state): State<AppState>,
     mut request: Request,

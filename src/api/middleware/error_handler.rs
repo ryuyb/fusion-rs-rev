@@ -66,38 +66,68 @@ impl IntoResponse for AppError {
                 StatusCode::FORBIDDEN,
                 ErrorResponse::new("FORBIDDEN", message),
             ),
-            AppError::Database { operation, .. } => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    &format!("Database operation failed: {}", operation),
-                ).with_details(json!({
-                    "operation": operation
-                })),
-            ),
-            AppError::Configuration { key, .. } => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                ErrorResponse::new(
-                    "CONFIGURATION_ERROR",
-                    &format!("Configuration error: {}", key),
-                ).with_details(json!({
-                    "key": key
-                })),
-            ),
-            AppError::ConnectionPool { .. } => (
-                StatusCode::SERVICE_UNAVAILABLE,
-                ErrorResponse::new(
-                    "SERVICE_UNAVAILABLE",
-                    "Database connection unavailable",
-                ),
-            ),
-            AppError::Internal { .. } => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                ErrorResponse::new(
-                    "INTERNAL_ERROR",
-                    "An internal error occurred",
-                ),
-            ),
+            AppError::Database { operation, source } => {
+                // Log 500 error with full details
+                tracing::error!(
+                    error = %source,
+                    operation = %operation,
+                    "Database error occurred"
+                );
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    ErrorResponse::new(
+                        "DATABASE_ERROR",
+                        &format!("Database operation failed: {}", operation),
+                    ).with_details(json!({
+                        "operation": operation
+                    })),
+                )
+            },
+            AppError::Configuration { key, source } => {
+                // Log 500 error with full details
+                tracing::error!(
+                    error = %source,
+                    key = %key,
+                    "Configuration error occurred"
+                );
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    ErrorResponse::new(
+                        "CONFIGURATION_ERROR",
+                        &format!("Configuration error: {}", key),
+                    ).with_details(json!({
+                        "key": key
+                    })),
+                )
+            },
+            AppError::ConnectionPool { source } => {
+                // Log connection pool error
+                tracing::error!(
+                    error = %source,
+                    "Connection pool error occurred"
+                );
+                (
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    ErrorResponse::new(
+                        "SERVICE_UNAVAILABLE",
+                        "Database connection unavailable",
+                    ),
+                )
+            },
+            AppError::Internal { source } => {
+                // Log 500 error with full details
+                tracing::error!(
+                    error = %source,
+                    "Internal error occurred"
+                );
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    ErrorResponse::new(
+                        "INTERNAL_ERROR",
+                        "An internal error occurred",
+                    ),
+                )
+            },
         };
 
         (status, Json(error_response)).into_response()
@@ -190,6 +220,12 @@ pub async fn global_error_handler(
                 ErrorResponse::new("PAYLOAD_TOO_LARGE", &message)
             },
             StatusCode::INTERNAL_SERVER_ERROR => {
+                // Log 500 errors
+                tracing::error!(
+                    status = %status,
+                    original_message = %original_message,
+                    "Internal server error occurred"
+                );
                 let message = if original_message.is_empty() {
                     "An internal server error occurred".to_string()
                 } else {
