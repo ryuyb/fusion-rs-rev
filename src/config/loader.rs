@@ -217,6 +217,10 @@ mod tests {
     use super::*;
     use std::fs;
     use tempfile::TempDir;
+    use std::sync::Mutex;
+
+    // Global mutex to ensure tests run sequentially to avoid env var conflicts
+    static TEST_MUTEX: Mutex<()> = Mutex::new(());
 
     /// Helper to create a temporary config directory with files
     fn setup_config_dir(files: &[(&str, &str)]) -> TempDir {
@@ -228,15 +232,60 @@ mod tests {
         temp_dir
     }
 
+    /// Helper to safely set environment variables for a test
+    struct EnvGuard {
+        vars_to_restore: Vec<(String, Option<String>)>,
+    }
+
+    impl EnvGuard {
+        fn new() -> Self {
+            Self {
+                vars_to_restore: Vec::new(),
+            }
+        }
+
+        fn set(&mut self, key: &str, value: &str) {
+            // Store original value for restoration
+            let original = std::env::var(key).ok();
+            self.vars_to_restore.push((key.to_string(), original));
+            unsafe {
+                std::env::set_var(key, value);
+            }
+        }
+
+        fn remove(&mut self, key: &str) {
+            // Store original value for restoration
+            let original = std::env::var(key).ok();
+            self.vars_to_restore.push((key.to_string(), original));
+            unsafe {
+                std::env::remove_var(key);
+            }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            // Restore all environment variables
+            for (key, original_value) in &self.vars_to_restore {
+                unsafe {
+                    match original_value {
+                        Some(value) => std::env::set_var(key, value),
+                        None => std::env::remove_var(key),
+                    }
+                }
+            }
+        }
+    }
+
     #[test]
     fn test_config_loader_new_default() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+        let mut env = EnvGuard::new();
+        
         // Clear environment variables
-        // SAFETY: Tests run single-threaded with --test-threads=1
-        unsafe {
-            std::env::remove_var("FUSION_CONFIG_DIR");
-            std::env::remove_var("FUSION_CONFIG_FILE");
-            std::env::remove_var("FUSION_APP_ENV");
-        }
+        env.remove("FUSION_CONFIG_DIR");
+        env.remove("FUSION_CONFIG_FILE");
+        env.remove("FUSION_APP_ENV");
 
         let loader = ConfigLoader::new().expect("Should create loader");
         assert_eq!(loader.config_dir, PathBuf::from("config"));
@@ -246,46 +295,38 @@ mod tests {
 
     #[test]
     fn test_config_loader_with_config_dir() {
-        // SAFETY: Tests run single-threaded with --test-threads=1
-        unsafe {
-            std::env::remove_var("FUSION_CONFIG_FILE");
-            std::env::set_var("FUSION_CONFIG_DIR", "/custom/config");
-        }
+        let _guard = TEST_MUTEX.lock().unwrap();
+        let mut env = EnvGuard::new();
+        
+        env.remove("FUSION_CONFIG_FILE");
+        env.set("FUSION_CONFIG_DIR", "/custom/config");
 
         let loader = ConfigLoader::new().expect("Should create loader");
         assert_eq!(loader.config_dir, PathBuf::from("/custom/config"));
-
-        unsafe {
-            std::env::remove_var("FUSION_CONFIG_DIR");
-        }
     }
 
     #[test]
     fn test_config_loader_with_config_file() {
-        // SAFETY: Tests run single-threaded with --test-threads=1
-        unsafe {
-            std::env::remove_var("FUSION_CONFIG_DIR");
-            std::env::set_var("FUSION_CONFIG_FILE", "/path/to/config.toml");
-        }
+        let _guard = TEST_MUTEX.lock().unwrap();
+        let mut env = EnvGuard::new();
+        
+        env.remove("FUSION_CONFIG_DIR");
+        env.set("FUSION_CONFIG_FILE", "/path/to/config.toml");
 
         let loader = ConfigLoader::new().expect("Should create loader");
         assert_eq!(
             loader.config_file,
             Some(PathBuf::from("/path/to/config.toml"))
         );
-
-        unsafe {
-            std::env::remove_var("FUSION_CONFIG_FILE");
-        }
     }
 
     #[test]
     fn test_config_loader_mutual_exclusivity_error() {
-        // SAFETY: Tests run single-threaded with --test-threads=1
-        unsafe {
-            std::env::set_var("FUSION_CONFIG_DIR", "/custom/config");
-            std::env::set_var("FUSION_CONFIG_FILE", "/path/to/config.toml");
-        }
+        let _guard = TEST_MUTEX.lock().unwrap();
+        let mut env = EnvGuard::new();
+        
+        env.set("FUSION_CONFIG_DIR", "/custom/config");
+        env.set("FUSION_CONFIG_FILE", "/path/to/config.toml");
 
         let result = ConfigLoader::new();
         assert!(result.is_err());
@@ -295,40 +336,31 @@ mod tests {
         } else {
             panic!("Expected MutualExclusivityError");
         }
-
-        unsafe {
-            std::env::remove_var("FUSION_CONFIG_DIR");
-            std::env::remove_var("FUSION_CONFIG_FILE");
-        }
     }
 
     #[test]
     fn test_config_loader_environment_from_env() {
-        // SAFETY: Tests run single-threaded with --test-threads=1
-        unsafe {
-            std::env::remove_var("FUSION_CONFIG_DIR");
-            std::env::remove_var("FUSION_CONFIG_FILE");
-            std::env::set_var("FUSION_APP_ENV", "production");
-        }
+        let _guard = TEST_MUTEX.lock().unwrap();
+        let mut env = EnvGuard::new();
+        
+        env.remove("FUSION_CONFIG_DIR");
+        env.remove("FUSION_CONFIG_FILE");
+        env.set("FUSION_APP_ENV", "production");
 
         let loader = ConfigLoader::new().expect("Should create loader");
         assert_eq!(loader.environment, AppEnvironment::Production);
-
-        unsafe {
-            std::env::remove_var("FUSION_APP_ENV");
-        }
     }
 
     #[test]
     fn test_load_missing_default_toml() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+        let mut env = EnvGuard::new();
+        
         let temp_dir = setup_config_dir(&[]);
 
-        // SAFETY: Tests run single-threaded with --test-threads=1
-        unsafe {
-            std::env::set_var("FUSION_CONFIG_DIR", temp_dir.path().to_str().unwrap());
-            std::env::remove_var("FUSION_CONFIG_FILE");
-            std::env::remove_var("FUSION_APP_ENV");
-        }
+        env.set("FUSION_CONFIG_DIR", temp_dir.path().to_str().unwrap());
+        env.remove("FUSION_CONFIG_FILE");
+        env.remove("FUSION_APP_ENV");
 
         let loader = ConfigLoader::new().expect("Should create loader");
         let result = loader.load();
@@ -339,14 +371,13 @@ mod tests {
         } else {
             panic!("Expected FileNotFound error");
         }
-
-        unsafe {
-            std::env::remove_var("FUSION_CONFIG_DIR");
-        }
     }
 
     #[test]
     fn test_load_default_toml_only() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+        let mut env = EnvGuard::new();
+        
         let default_config = r#"
 [application]
 name = "test-app"
@@ -386,12 +417,9 @@ compress = false
 
         let temp_dir = setup_config_dir(&[("default.toml", default_config)]);
 
-        // SAFETY: Tests run single-threaded with --test-threads=1
-        unsafe {
-            std::env::set_var("FUSION_CONFIG_DIR", temp_dir.path().to_str().unwrap());
-            std::env::remove_var("FUSION_CONFIG_FILE");
-            std::env::remove_var("FUSION_APP_ENV");
-        }
+        env.set("FUSION_CONFIG_DIR", temp_dir.path().to_str().unwrap());
+        env.remove("FUSION_CONFIG_FILE");
+        env.remove("FUSION_APP_ENV");
 
         let loader = ConfigLoader::new().expect("Should create loader");
         let settings = loader.load().expect("Should load settings");
@@ -400,14 +428,13 @@ compress = false
         assert_eq!(settings.application.version, "1.0.0");
         assert_eq!(settings.server.port, 3000);
         assert_eq!(settings.database.url, "postgres://localhost/test");
-
-        unsafe {
-            std::env::remove_var("FUSION_CONFIG_DIR");
-        }
     }
 
     #[test]
     fn test_load_with_environment_override() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+        let mut env = EnvGuard::new();
+        
         let default_config = r#"
 [application]
 name = "test-app"
@@ -451,12 +478,9 @@ max_connections = 50
             ("production.toml", production_config),
         ]);
 
-        // SAFETY: Tests run single-threaded with --test-threads=1
-        unsafe {
-            std::env::set_var("FUSION_CONFIG_DIR", temp_dir.path().to_str().unwrap());
-            std::env::remove_var("FUSION_CONFIG_FILE");
-            std::env::set_var("FUSION_APP_ENV", "production");
-        }
+        env.set("FUSION_CONFIG_DIR", temp_dir.path().to_str().unwrap());
+        env.remove("FUSION_CONFIG_FILE");
+        env.set("FUSION_APP_ENV", "production");
 
         let loader = ConfigLoader::new().expect("Should create loader");
         let settings = loader.load().expect("Should load settings");
@@ -471,15 +495,13 @@ max_connections = 50
         assert_eq!(settings.application.name, "test-app");
         assert_eq!(settings.server.request_timeout, 30);
         assert_eq!(settings.database.min_connections, 1);
-
-        unsafe {
-            std::env::remove_var("FUSION_CONFIG_DIR");
-            std::env::remove_var("FUSION_APP_ENV");
-        }
     }
 
     #[test]
     fn test_load_with_local_override() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+        let mut env = EnvGuard::new();
+        
         let default_config = r#"
 [application]
 name = "test-app"
@@ -521,12 +543,9 @@ url = "postgres://localhost/local_dev"
             ("local.toml", local_config),
         ]);
 
-        // SAFETY: Tests run single-threaded with --test-threads=1
-        unsafe {
-            std::env::set_var("FUSION_CONFIG_DIR", temp_dir.path().to_str().unwrap());
-            std::env::remove_var("FUSION_CONFIG_FILE");
-            std::env::remove_var("FUSION_APP_ENV");
-        }
+        env.set("FUSION_CONFIG_DIR", temp_dir.path().to_str().unwrap());
+        env.remove("FUSION_CONFIG_FILE");
+        env.remove("FUSION_APP_ENV");
 
         let loader = ConfigLoader::new().expect("Should create loader");
         let settings = loader.load().expect("Should load settings");
@@ -538,14 +557,13 @@ url = "postgres://localhost/local_dev"
         // Values not in local.toml should come from default.toml
         assert_eq!(settings.application.name, "test-app");
         assert_eq!(settings.server.host, "127.0.0.1");
-
-        unsafe {
-            std::env::remove_var("FUSION_CONFIG_DIR");
-        }
     }
 
     #[test]
     fn test_load_with_env_var_override() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+        let mut env = EnvGuard::new();
+        
         let default_config = r#"
 [application]
 name = "test-app"
@@ -576,17 +594,14 @@ enabled = false
 
         let temp_dir = setup_config_dir(&[("default.toml", default_config)]);
 
-        // SAFETY: Tests run single-threaded with --test-threads=1
-        unsafe {
-            std::env::set_var("FUSION_CONFIG_DIR", temp_dir.path().to_str().unwrap());
-            std::env::remove_var("FUSION_CONFIG_FILE");
-            std::env::remove_var("FUSION_APP_ENV");
+        env.set("FUSION_CONFIG_DIR", temp_dir.path().to_str().unwrap());
+        env.remove("FUSION_CONFIG_FILE");
+        env.remove("FUSION_APP_ENV");
 
-            // Set environment variable overrides
-            // The config crate converts env var names to lowercase and uses __ as separator
-            std::env::set_var("FUSION_SERVER__PORT", "4000");
-            std::env::set_var("FUSION_DATABASE__URL", "postgres://env-override/db");
-        }
+        // Set environment variable overrides
+        // The config crate converts env var names to lowercase and uses __ as separator
+        env.set("FUSION_SERVER__PORT", "4000");
+        env.set("FUSION_DATABASE__URL", "postgres://env-override/db");
 
         let loader = ConfigLoader::new().expect("Should create loader");
         let settings = loader.load().expect("Should load settings");
@@ -598,16 +613,13 @@ enabled = false
         // Values not overridden should come from default.toml
         assert_eq!(settings.application.name, "test-app");
         assert_eq!(settings.server.host, "127.0.0.1");
-
-        unsafe {
-            std::env::remove_var("FUSION_CONFIG_DIR");
-            std::env::remove_var("FUSION_SERVER__PORT");
-            std::env::remove_var("FUSION_DATABASE__URL");
-        }
     }
 
     #[test]
     fn test_load_full_precedence_chain() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+        let mut env = EnvGuard::new();
+        
         let default_config = r#"
 [application]
 name = "default-app"
@@ -661,15 +673,12 @@ url = "postgres://local/db"
             ("local.toml", local_config),
         ]);
 
-        // SAFETY: Tests run single-threaded with --test-threads=1
-        unsafe {
-            std::env::set_var("FUSION_CONFIG_DIR", temp_dir.path().to_str().unwrap());
-            std::env::remove_var("FUSION_CONFIG_FILE");
-            std::env::remove_var("FUSION_APP_ENV"); // defaults to development
+        env.set("FUSION_CONFIG_DIR", temp_dir.path().to_str().unwrap());
+        env.remove("FUSION_CONFIG_FILE");
+        env.remove("FUSION_APP_ENV"); // defaults to development
 
-            // Set environment variable override (highest priority)
-            std::env::set_var("FUSION_SERVER__PORT", "3003");
-        }
+        // Set environment variable override (highest priority)
+        env.set("FUSION_SERVER__PORT", "3003");
 
         let loader = ConfigLoader::new().expect("Should create loader");
         let settings = loader.load().expect("Should load settings");
@@ -686,15 +695,13 @@ url = "postgres://local/db"
         // default.toml provides base values
         assert_eq!(settings.server.host, "127.0.0.1");
         assert_eq!(settings.application.version, "1.0.0");
-
-        unsafe {
-            std::env::remove_var("FUSION_CONFIG_DIR");
-            std::env::remove_var("FUSION_SERVER__PORT");
-        }
     }
 
     #[test]
     fn test_load_single_file_mode() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+        let mut env = EnvGuard::new();
+        
         let single_config = r#"
 [application]
 name = "single-file-app"
@@ -726,12 +733,9 @@ enabled = false
         let temp_dir = setup_config_dir(&[("single.toml", single_config)]);
         let config_file_path = temp_dir.path().join("single.toml");
 
-        // SAFETY: Tests run single-threaded with --test-threads=1
-        unsafe {
-            std::env::remove_var("FUSION_CONFIG_DIR");
-            std::env::set_var("FUSION_CONFIG_FILE", config_file_path.to_str().unwrap());
-            std::env::remove_var("FUSION_APP_ENV");
-        }
+        env.remove("FUSION_CONFIG_DIR");
+        env.set("FUSION_CONFIG_FILE", config_file_path.to_str().unwrap());
+        env.remove("FUSION_APP_ENV");
 
         let loader = ConfigLoader::new().expect("Should create loader");
         let settings = loader.load().expect("Should load settings");
@@ -741,14 +745,13 @@ enabled = false
         assert_eq!(settings.server.host, "0.0.0.0");
         assert_eq!(settings.server.port, 5000);
         assert_eq!(settings.database.url, "postgres://single/db");
-
-        unsafe {
-            std::env::remove_var("FUSION_CONFIG_FILE");
-        }
     }
 
     #[test]
     fn test_optional_files_not_required() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+        let mut env = EnvGuard::new();
+        
         // Only default.toml exists, no environment or local files
         let default_config = r#"
 [application]
@@ -780,22 +783,14 @@ enabled = false
 
         let temp_dir = setup_config_dir(&[("default.toml", default_config)]);
 
-        // SAFETY: Tests run single-threaded with --test-threads=1
-        unsafe {
-            std::env::set_var("FUSION_CONFIG_DIR", temp_dir.path().to_str().unwrap());
-            std::env::remove_var("FUSION_CONFIG_FILE");
-            std::env::set_var("FUSION_APP_ENV", "staging"); // staging.toml doesn't exist
-        }
+        env.set("FUSION_CONFIG_DIR", temp_dir.path().to_str().unwrap());
+        env.remove("FUSION_CONFIG_FILE");
+        env.set("FUSION_APP_ENV", "staging"); // staging.toml doesn't exist
 
         let loader = ConfigLoader::new().expect("Should create loader");
         // Should succeed even though staging.toml and local.toml don't exist
         let settings = loader.load().expect("Should load settings");
 
         assert_eq!(settings.application.name, "test-app");
-
-        unsafe {
-            std::env::remove_var("FUSION_CONFIG_DIR");
-            std::env::remove_var("FUSION_APP_ENV");
-        }
     }
 }

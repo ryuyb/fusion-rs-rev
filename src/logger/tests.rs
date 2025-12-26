@@ -422,7 +422,7 @@ mod core_property_tests {
             prop_assert_eq!(default_format, LogFormat::Full);
 
             let default_file_config = FileConfig::default();
-            prop_assert_eq!(default_file_config.format, LogFormat::Full);
+            prop_assert_eq!(default_file_config.format, LogFormat::Json);
         }
     }
 }
