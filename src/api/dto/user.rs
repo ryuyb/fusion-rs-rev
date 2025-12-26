@@ -1,6 +1,7 @@
 //! User-related DTOs for API requests and responses.
 
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use crate::models::{NewUser, UpdateUser, User};
 
 // ============================================================================
@@ -8,7 +9,7 @@ use crate::models::{NewUser, UpdateUser, User};
 // ============================================================================
 
 /// Request body for creating a new user.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateUserRequest {
     pub username: String,
     pub email: String,
@@ -27,7 +28,7 @@ impl CreateUserRequest {
 }
 
 /// Request body for updating a user.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateUserRequest {
     pub username: Option<String>,
     pub email: Option<String>,
@@ -50,7 +51,7 @@ impl UpdateUserRequest {
 // ============================================================================
 
 /// Response body for user data (excludes sensitive fields like password).
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UserResponse {
     pub id: i32,
     pub username: String,

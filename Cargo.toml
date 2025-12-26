@@ -27,6 +27,11 @@ regex = "1.0"
 # Compression support
 flate2 = "1.0"
 
+# utoipa
+utoipa = { version = "5.4", features = ["axum_extras"] }
+utoipa-axum = { version = "0.2" }
+utoipa-swagger-ui = { version = "9", features = ["axum"] }
+
 [dev-dependencies]
 proptest = "1.0"
 tempfile = "3.0"

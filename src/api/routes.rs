@@ -3,11 +3,14 @@
 //! This module provides centralized route registration and middleware
 //! configuration for the application.
 
-use axum::{middleware, Router};
-
+use crate::api::doc::ApiDoc;
 use crate::api::handlers;
 use crate::api::middleware::{global_error_handler, logging_middleware, request_id_middleware};
 use crate::state::AppState;
+use axum::{middleware, Router};
+use utoipa::OpenApi;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_swagger_ui::SwaggerUi;
 
 /// Creates the main application router with all routes and middleware.
 ///
@@ -31,11 +34,13 @@ use crate::state::AppState;
 /// let router = create_router(state);
 /// ```
 pub fn create_router(state: AppState) -> Router {
-    let api_routes = Router::new()
-        .nest("/users", handlers::users::user_routes());
+    let api_routes = OpenApiRouter::new().nest("/users", handlers::users::user_routes());
 
-    Router::new()
+    let (router, openapi) = OpenApiRouter::with_openapi(ApiDoc::openapi())
         .nest("/api", api_routes)
+        .split_for_parts();
+    router
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi.clone()))
         // Middleware is applied in reverse order - last added runs first
         // So: global_error_handler -> request_id -> logging
         .layer(middleware::from_fn(logging_middleware))
