@@ -22,7 +22,6 @@ anyhow = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-toml = "0.8"
 regex = "1.0"
 
 # Compression support
@@ -32,3 +31,4 @@ flate2 = "1.0"
 proptest = "1.0"
 tempfile = "3.0"
 filetime = "0.2"
+toml = "0.9"
