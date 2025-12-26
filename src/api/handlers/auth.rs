@@ -5,9 +5,11 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
+
 use crate::api::doc::AUTH_TAG;
 use crate::error::AppResult;
 use crate::state::AppState;
+use crate::utils::jwt::{generate_token_pair, validate_refresh_token};
 
 /// Login request payload
 #[derive(Debug, Deserialize, ToSchema)]
@@ -34,6 +36,14 @@ pub struct RegisterRequest {
     pub password: String,
 }
 
+/// Refresh token request payload
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct RefreshTokenRequest {
+    /// Refresh token
+    #[schema(example = "eyJ0eXAiOiJKV1QiLCJhbGc...")]
+    pub refresh_token: String,
+}
+
 /// Login response with user info and tokens
 #[derive(Debug, Serialize, ToSchema)]
 pub struct LoginResponse {
@@ -56,6 +66,17 @@ pub struct RegisterResponse {
     #[schema(example = "eyJ0eXAiOiJKV1QiLCJhbGc...")]
     pub access_token: String,
     /// Refresh token (long-lived)
+    #[schema(example = "eyJ0eXAiOiJKV1QiLCJhbGc...")]
+    pub refresh_token: String,
+}
+
+/// Refresh token response with new tokens
+#[derive(Debug, Serialize, ToSchema)]
+pub struct RefreshTokenResponse {
+    /// New access token (short-lived)
+    #[schema(example = "eyJ0eXAiOiJKV1QiLCJhbGc...")]
+    pub access_token: String,
+    /// New refresh token (long-lived)
     #[schema(example = "eyJ0eXAiOiJKV1QiLCJhbGc...")]
     pub refresh_token: String,
 }
@@ -89,10 +110,12 @@ impl From<crate::models::User> for UserInfo {
 /// # Routes
 /// - `POST /login` - Authenticate user and get tokens
 /// - `POST /register` - Register new user and get tokens
+/// - `POST /refresh` - Refresh access token using refresh token
 pub fn auth_routes() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes!(login))
         .routes(routes!(register))
+        .routes(routes!(refresh_token))
 }
 
 /// POST /api/auth/login - Authenticate user
@@ -162,7 +185,7 @@ async fn register(
     let user = state.services.users.create_user(new_user).await?;
 
     // Generate tokens for the newly registered user
-    let (access_token, refresh_token) = crate::utils::jwt::generate_token_pair(
+    let (access_token, refresh_token) = generate_token_pair(
         user.id,
         user.email.clone(),
         user.username.clone(),
@@ -178,4 +201,50 @@ async fn register(
     };
 
     Ok((StatusCode::CREATED, Json(response)))
+}
+
+/// POST /api/auth/refresh - Refresh access token
+///
+/// Validates the refresh token and issues new access and refresh tokens.
+#[utoipa::path(
+    post,
+    path = "/refresh",
+    tag = AUTH_TAG,
+    request_body = RefreshTokenRequest,
+    responses(
+        (status = 200, description = "Tokens refreshed successfully", body = RefreshTokenResponse),
+        (status = 401, description = "Invalid or expired refresh token")
+    )
+)]
+async fn refresh_token(
+    State(state): State<AppState>,
+    Json(payload): Json<RefreshTokenRequest>,
+) -> AppResult<Json<RefreshTokenResponse>> {
+    // Validate the refresh token
+    let claims = validate_refresh_token(&payload.refresh_token, &state.jwt_config.secret)?;
+
+    // Parse user ID from claims
+    let user_id: i32 = claims.sub.parse().map_err(|_| crate::error::AppError::Unauthorized {
+        message: "Invalid user ID in token".to_string(),
+    })?;
+
+    // Verify user still exists
+    let user = state.services.users.get_user(user_id).await?;
+
+    // Generate new token pair
+    let (access_token, refresh_token) = generate_token_pair(
+        user.id,
+        user.email.clone(),
+        user.username.clone(),
+        &state.jwt_config.secret,
+        state.jwt_config.access_token_expiration,
+        state.jwt_config.refresh_token_expiration,
+    )?;
+
+    let response = RefreshTokenResponse {
+        access_token,
+        refresh_token,
+    };
+
+    Ok(Json(response))
 }

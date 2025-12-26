@@ -17,6 +17,8 @@ pub const HEALTH_TAG: &str = "Health";
         crate::api::handlers::health::liveness_check,
         crate::api::handlers::auth::login,
         crate::api::handlers::auth::register,
+        crate::api::handlers::auth::refresh_token,
+        crate::api::handlers::me::get_me,
     ),
     components(
         schemas(
@@ -27,6 +29,8 @@ pub const HEALTH_TAG: &str = "Health";
             crate::api::handlers::auth::LoginResponse,
             crate::api::handlers::auth::RegisterRequest,
             crate::api::handlers::auth::RegisterResponse,
+            crate::api::handlers::auth::RefreshTokenRequest,
+            crate::api::handlers::auth::RefreshTokenResponse,
             crate::api::handlers::auth::UserInfo,
         )
     ),
