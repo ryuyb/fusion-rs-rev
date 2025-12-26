@@ -8,6 +8,8 @@ use crate::api::handlers;
 use crate::api::middleware::{global_error_handler, logging_middleware, request_id_middleware};
 use crate::state::AppState;
 use axum::{middleware, Router};
+use tower_http::compression::CompressionLayer;
+use tower_http::cors::CorsLayer;
 use utoipa::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_swagger_ui::SwaggerUi;
@@ -46,6 +48,8 @@ pub fn create_router(state: AppState) -> Router {
         .layer(middleware::from_fn(logging_middleware))
         .layer(middleware::from_fn(global_error_handler))
         .layer(middleware::from_fn(request_id_middleware))
+        .layer(CompressionLayer::new())
+        .layer(CorsLayer::permissive())
         .with_state(state)
 }
 

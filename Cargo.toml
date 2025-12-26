@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 axum = { version = "0.8", features = ["json", "tracing"] }
 tokio = { version = "1.0", features = ["full"] }
+tower-http = { version = "0.6", features = ["cors", "compression-gzip"] }
 diesel = { version = "2.3", features = ["postgres", "chrono"] }
 diesel-async = { version = "0.7", features = ["postgres", "bb8", "migrations"] }
 diesel_migrations = { version = "2.3" }
