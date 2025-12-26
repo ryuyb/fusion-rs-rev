@@ -60,37 +60,40 @@ RUN case "$TARGETARCH" in \
         cp target/aarch64-unknown-linux-musl/release/fusion-rs ./fusion-rs ;; \
     esac
 
+# =============================================================================
+# Runtime Stage - Minimal Debian image
+# =============================================================================
+FROM debian:13-slim
+
+# Install runtime dependencies and tools
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    tzdata \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 # Create non-root user
-RUN adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "/nonexistent" \
-    --shell "/sbin/nologin" \
-    --no-create-home \
-    --uid "10001" \
-    "app"
+RUN groupadd -r -g 1001 appgroup && \
+    useradd -r -u 1001 -g appgroup -d /app -s /bin/bash appuser
 
-# =============================================================================
-# Runtime Stage - Minimal scratch image
-# =============================================================================
-FROM scratch
-
-# Copy user and group files
-COPY --from=builder /etc/passwd /etc/passwd
-COPY --from=builder /etc/group /etc/group
-
-# Copy CA certificates for HTTPS requests
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+# Create directories and set permissions
+RUN mkdir -p /app/logs /app/config && \
+    chown -R appuser:appgroup /app
 
 WORKDIR /app
 
 # Copy binary and config
 COPY --from=builder /app/fusion-rs ./
 COPY --from=builder /app/config ./config
+RUN chown -R appuser:appgroup /app
 
-USER app:app
+USER appuser
 
 EXPOSE 8080
+
+# Health check using curl
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
 
 ENV RUST_LOG=info
 ENV FUSION_SERVER__HOST=0.0.0.0
