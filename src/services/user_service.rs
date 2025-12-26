@@ -6,6 +6,7 @@
 use crate::error::{AppError, AppResult};
 use crate::models::{NewUser, UpdateUser, User};
 use crate::repositories::UserRepository;
+use crate::utils::password::{hash_password, verify_password};
 
 /// User service for handling user-related business logic.
 ///
@@ -30,7 +31,12 @@ impl UserService {
     ///
     /// # Returns
     /// The created user with generated id and timestamps
-    pub async fn create_user(&self, new_user: NewUser) -> AppResult<User> {
+    ///
+    /// # Note
+    /// The password will be automatically hashed before storing
+    pub async fn create_user(&self, mut new_user: NewUser) -> AppResult<User> {
+        // Hash the password before storing
+        new_user.password = hash_password(&new_user.password)?;
         self.repo.create(new_user).await
     }
 
@@ -91,9 +97,18 @@ impl UserService {
     ///
     /// # Returns
     /// The updated user
-    pub async fn update_user(&self, id: i32, update_data: UpdateUser) -> AppResult<User> {
+    ///
+    /// # Note
+    /// If password is provided, it will be automatically hashed before storing
+    pub async fn update_user(&self, id: i32, mut update_data: UpdateUser) -> AppResult<User> {
         // Verify user exists first
         self.get_user(id).await?;
+        
+        // Hash the password if it's being updated
+        if let Some(password) = update_data.password {
+            update_data.password = Some(hash_password(&password)?);
+        }
+        
         self.repo.update(id, update_data).await
     }
 
@@ -107,5 +122,22 @@ impl UserService {
     pub async fn delete_user(&self, id: i32) -> AppResult<bool> {
         let affected = self.repo.delete(id).await?;
         Ok(affected > 0)
+    }
+
+    /// Verifies a user's password.
+    ///
+    /// # Arguments
+    /// * `email` - The user's email address
+    /// * `password` - The plain text password to verify
+    ///
+    /// # Returns
+    /// `Some(User)` if credentials are valid, `None` if user not found or password incorrect
+    pub async fn verify_credentials(&self, email: &str, password: &str) -> AppResult<Option<User>> {
+        if let Some(user) = self.get_user_by_email(email).await? {
+            if verify_password(password, &user.password)? {
+                return Ok(Some(user));
+            }
+        }
+        Ok(None)
     }
 }

@@ -127,5 +127,21 @@ impl From<crate::config::error::ConfigError> for AppError {
     }
 }
 
+impl From<argon2::password_hash::Error> for AppError {
+    fn from(error: argon2::password_hash::Error) -> Self {
+        AppError::Internal {
+            source: anyhow::anyhow!("Password hash error: {}", error),
+        }
+    }
+}
+
+impl From<argon2::password_hash::phc::Error> for AppError {
+    fn from(error: argon2::password_hash::phc::Error) -> Self {
+        AppError::Internal {
+            source: anyhow::anyhow!("Password hash PHC error: {}", error),
+        }
+    }
+}
+
 /// Type alias for Result with AppError to simplify function signatures
 pub type AppResult<T> = Result<T, AppError>;

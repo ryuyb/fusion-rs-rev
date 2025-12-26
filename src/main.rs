@@ -10,6 +10,7 @@ mod schema;
 mod server;
 mod services;
 mod state;
+mod utils;
 
 pub use state::AppState;
 
