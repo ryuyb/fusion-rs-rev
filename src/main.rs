@@ -5,6 +5,7 @@ mod logger;
 mod models;
 mod repositories;
 mod schema;
+mod services;
 
 use config::{ConfigLoader, Environment};
 use logger::init_logger;
