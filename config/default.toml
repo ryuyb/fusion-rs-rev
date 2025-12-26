@@ -56,6 +56,23 @@ connection_timeout = 30
 auto_migrate = false
 
 # -----------------------------------------------------------------------------
+# JWT Configuration
+# -----------------------------------------------------------------------------
+# JWT authentication settings for token generation and validation.
+[jwt]
+# Secret key for signing JWT tokens
+# IMPORTANT: Override this in production with a strong, random string
+# Use environment variable: FUSION_JWT_SECRET
+# Minimum 32 characters recommended for security
+secret = ""
+# Access token expiration time in hours (short-lived)
+# Recommended: 1-24 hours
+access_token_expiration = 1
+# Refresh token expiration time in hours (long-lived)
+# Recommended: 168-720 hours (7-30 days)
+refresh_token_expiration = 168
+
+# -----------------------------------------------------------------------------
 # Logger Configuration
 # -----------------------------------------------------------------------------
 # Logging system settings compatible with tracing subscriber.

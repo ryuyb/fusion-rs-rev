@@ -7,6 +7,7 @@ use crate::error::{AppError, AppResult};
 use crate::models::{NewUser, UpdateUser, User};
 use crate::repositories::UserRepository;
 use crate::utils::password::{hash_password, verify_password};
+use crate::utils::jwt::generate_token_pair;
 
 /// User service for handling user-related business logic.
 ///
@@ -139,5 +140,43 @@ impl UserService {
             }
         }
         Ok(None)
+    }
+
+    /// Authenticates a user and generates JWT tokens.
+    ///
+    /// # Arguments
+    /// * `email` - The user's email address
+    /// * `password` - The plain text password
+    /// * `jwt_secret` - The secret key for signing the JWT
+    /// * `access_expiration_hours` - Access token validity duration in hours (typically 1-24)
+    /// * `refresh_expiration_hours` - Refresh token validity duration in hours (typically 168-720)
+    ///
+    /// # Returns
+    /// A tuple of (User, access_token, refresh_token) if credentials are valid, or Unauthorized error
+    pub async fn authenticate(
+        &self,
+        email: &str,
+        password: &str,
+        jwt_secret: &str,
+        access_expiration_hours: i64,
+        refresh_expiration_hours: i64,
+    ) -> AppResult<(User, String, String)> {
+        let user = self
+            .verify_credentials(email, password)
+            .await?
+            .ok_or(AppError::Unauthorized {
+                message: "Invalid email or password".to_string(),
+            })?;
+
+        let (access_token, refresh_token) = generate_token_pair(
+            user.id,
+            user.email.clone(),
+            user.username.clone(),
+            jwt_secret,
+            access_expiration_hours,
+            refresh_expiration_hours,
+        )?;
+
+        Ok((user, access_token, refresh_token))
     }
 }

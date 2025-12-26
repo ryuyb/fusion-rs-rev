@@ -34,6 +34,19 @@ min_connections = 5
 connection_timeout = 30
 
 # -----------------------------------------------------------------------------
+# JWT Configuration
+# -----------------------------------------------------------------------------
+# Production JWT settings - MUST be overridden via environment variables
+[jwt]
+# CRITICAL: Override via FUSION_JWT__SECRET environment variable
+# Must be a strong, random string (minimum 32 characters)
+# Generate with: openssl rand -base64 32
+secret = ""
+# Production token expiration times
+access_token_expiration = 1      # 1 hour
+refresh_token_expiration = 168   # 7 days
+
+# -----------------------------------------------------------------------------
 # Logger Configuration
 # -----------------------------------------------------------------------------
 # Production logging - structured JSON for log aggregation

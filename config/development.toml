@@ -24,6 +24,17 @@ min_connections = 1
 auto_migrate = true
 
 # -----------------------------------------------------------------------------
+# JWT Configuration
+# -----------------------------------------------------------------------------
+# Development JWT settings - DO NOT use in production
+[jwt]
+# Development secret - CHANGE THIS IN PRODUCTION
+secret = "dev_secret_key_change_in_production_min_32_chars"
+# Shorter expiration for development testing
+access_token_expiration = 1
+refresh_token_expiration = 24
+
+# -----------------------------------------------------------------------------
 # Logger Configuration
 # -----------------------------------------------------------------------------
 # More verbose logging for development

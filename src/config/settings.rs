@@ -80,6 +80,18 @@ fn default_max_files() -> usize {
     5
 }
 
+fn default_jwt_secret() -> String {
+    String::new()
+}
+
+fn default_access_token_expiration() -> i64 {
+    1 // 1 hour
+}
+
+fn default_refresh_token_expiration() -> i64 {
+    168 // 7 days (168 hours)
+}
+
 // ============================================================================
 // Application Configuration
 // ============================================================================
@@ -184,6 +196,80 @@ impl Default for DatabaseConfig {
             connection_timeout: default_connection_timeout(),
             auto_migrate: false,
         }
+    }
+}
+
+// ============================================================================
+// JWT Configuration
+// ============================================================================
+
+/// JWT authentication configuration
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct JwtConfig {
+    /// Secret key for signing JWT tokens
+    /// IMPORTANT: This should be a strong, random string in production
+    /// and should be kept secret (use environment variables)
+    #[serde(default = "default_jwt_secret")]
+    pub secret: String,
+
+    /// Access token expiration time in hours
+    #[serde(default = "default_access_token_expiration")]
+    pub access_token_expiration: i64,
+
+    /// Refresh token expiration time in hours
+    #[serde(default = "default_refresh_token_expiration")]
+    pub refresh_token_expiration: i64,
+}
+
+impl Default for JwtConfig {
+    fn default() -> Self {
+        Self {
+            secret: default_jwt_secret(),
+            access_token_expiration: default_access_token_expiration(),
+            refresh_token_expiration: default_refresh_token_expiration(),
+        }
+    }
+}
+
+impl JwtConfig {
+    /// Validates the JWT configuration
+    pub fn validate(&self) -> Result<(), ConfigError> {
+        if self.secret.is_empty() {
+            return Err(ConfigError::ValidationError {
+                field: "jwt.secret".to_string(),
+                message: "JWT secret cannot be empty".to_string(),
+            });
+        }
+
+        if self.secret.len() < 32 {
+            return Err(ConfigError::ValidationError {
+                field: "jwt.secret".to_string(),
+                message: "JWT secret should be at least 32 characters for security".to_string(),
+            });
+        }
+
+        if self.access_token_expiration <= 0 {
+            return Err(ConfigError::ValidationError {
+                field: "jwt.access_token_expiration".to_string(),
+                message: "Access token expiration must be positive".to_string(),
+            });
+        }
+
+        if self.refresh_token_expiration <= 0 {
+            return Err(ConfigError::ValidationError {
+                field: "jwt.refresh_token_expiration".to_string(),
+                message: "Refresh token expiration must be positive".to_string(),
+            });
+        }
+
+        if self.access_token_expiration >= self.refresh_token_expiration {
+            return Err(ConfigError::ValidationError {
+                field: "jwt".to_string(),
+                message: "Refresh token expiration should be longer than access token expiration".to_string(),
+            });
+        }
+
+        Ok(())
     }
 }
 
@@ -426,6 +512,10 @@ pub struct Settings {
     #[serde(default)]
     pub database: DatabaseConfig,
 
+    /// JWT authentication configuration
+    #[serde(default)]
+    pub jwt: JwtConfig,
+
     /// Logger configuration
     #[serde(default)]
     pub logger: LoggerSettings,
@@ -437,6 +527,7 @@ impl Default for Settings {
             application: ApplicationConfig::default(),
             server: ServerConfig::default(),
             database: DatabaseConfig::default(),
+            jwt: JwtConfig::default(),
             logger: LoggerSettings::default(),
         }
     }
@@ -499,6 +590,19 @@ mod tests {
                     connection_timeout,
                     auto_migrate: false,
                 }
+            })
+    }
+
+    fn arb_jwt_config() -> impl Strategy<Value = JwtConfig> {
+        (
+            "[a-zA-Z0-9]{32,64}",  // secret: 32-64 chars
+            1i64..=24i64,          // access_token_expiration: 1-24 hours
+            25i64..=720i64,        // refresh_token_expiration: 25-720 hours (ensure > access)
+        )
+            .prop_map(|(secret, access_token_expiration, refresh_token_expiration)| JwtConfig {
+                secret,
+                access_token_expiration,
+                refresh_token_expiration,
             })
     }
 
@@ -574,12 +678,14 @@ mod tests {
             arb_application_config(),
             arb_server_config(),
             arb_database_config(),
+            arb_jwt_config(),
             arb_logger_settings(),
         )
-            .prop_map(|(application, server, database, logger)| Settings {
+            .prop_map(|(application, server, database, jwt, logger)| Settings {
                 application,
                 server,
                 database,
+                jwt,
                 logger,
             })
     }
@@ -646,6 +752,97 @@ mod tests {
     }
 
     #[test]
+    fn test_jwt_config_defaults() {
+        let config = JwtConfig::default();
+        assert_eq!(config.secret, "");
+        assert_eq!(config.access_token_expiration, 1);
+        assert_eq!(config.refresh_token_expiration, 168);
+    }
+
+    #[test]
+    fn test_jwt_config_validate_empty_secret() {
+        let config = JwtConfig {
+            secret: "".to_string(),
+            access_token_expiration: 1,
+            refresh_token_expiration: 168,
+        };
+        let result = config.validate();
+        assert!(result.is_err());
+        if let Err(ConfigError::ValidationError { field, message }) = result {
+            assert_eq!(field, "jwt.secret");
+            assert!(message.contains("cannot be empty"));
+        }
+    }
+
+    #[test]
+    fn test_jwt_config_validate_short_secret() {
+        let config = JwtConfig {
+            secret: "short".to_string(),
+            access_token_expiration: 1,
+            refresh_token_expiration: 168,
+        };
+        let result = config.validate();
+        assert!(result.is_err());
+        if let Err(ConfigError::ValidationError { field, message }) = result {
+            assert_eq!(field, "jwt.secret");
+            assert!(message.contains("at least 32 characters"));
+        }
+    }
+
+    #[test]
+    fn test_jwt_config_validate_negative_access_expiration() {
+        let config = JwtConfig {
+            secret: "a".repeat(32),
+            access_token_expiration: -1,
+            refresh_token_expiration: 168,
+        };
+        let result = config.validate();
+        assert!(result.is_err());
+        if let Err(ConfigError::ValidationError { field, .. }) = result {
+            assert_eq!(field, "jwt.access_token_expiration");
+        }
+    }
+
+    #[test]
+    fn test_jwt_config_validate_negative_refresh_expiration() {
+        let config = JwtConfig {
+            secret: "a".repeat(32),
+            access_token_expiration: 1,
+            refresh_token_expiration: -1,
+        };
+        let result = config.validate();
+        assert!(result.is_err());
+        if let Err(ConfigError::ValidationError { field, .. }) = result {
+            assert_eq!(field, "jwt.refresh_token_expiration");
+        }
+    }
+
+    #[test]
+    fn test_jwt_config_validate_access_longer_than_refresh() {
+        let config = JwtConfig {
+            secret: "a".repeat(32),
+            access_token_expiration: 100,
+            refresh_token_expiration: 50,
+        };
+        let result = config.validate();
+        assert!(result.is_err());
+        if let Err(ConfigError::ValidationError { field, message }) = result {
+            assert_eq!(field, "jwt");
+            assert!(message.contains("Refresh token expiration should be longer"));
+        }
+    }
+
+    #[test]
+    fn test_jwt_config_validate_success() {
+        let config = JwtConfig {
+            secret: "a".repeat(32),
+            access_token_expiration: 1,
+            refresh_token_expiration: 168,
+        };
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
     fn test_console_settings_defaults() {
         let settings = ConsoleSettings::default();
         assert!(settings.enabled);
@@ -684,6 +881,8 @@ mod tests {
         assert_eq!(settings.application.name, "fusion-rs");
         assert_eq!(settings.server.port, 3000);
         assert_eq!(settings.database.max_connections, 10);
+        assert_eq!(settings.jwt.access_token_expiration, 1);
+        assert_eq!(settings.jwt.refresh_token_expiration, 168);
         assert_eq!(settings.logger.level, "info");
     }
 

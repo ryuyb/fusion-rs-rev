@@ -24,6 +24,7 @@ use utoipa_swagger_ui::SwaggerUi;
 ///
 /// # Routes
 /// - `/health` - Health check endpoints
+/// - `/api/auth` - Authentication endpoints (login, register)
 /// - `/api/users` - User CRUD operations
 ///
 /// # Requirements
@@ -37,7 +38,9 @@ use utoipa_swagger_ui::SwaggerUi;
 /// let router = create_router(state);
 /// ```
 pub fn create_router(state: AppState) -> Router {
-    let api_routes = OpenApiRouter::new().nest("/users", handlers::users::user_routes());
+    let api_routes = OpenApiRouter::new()
+        .nest("/auth", handlers::auth::auth_routes())
+        .nest("/users", handlers::users::user_routes());
 
     let (router, openapi) = OpenApiRouter::with_openapi(ApiDoc::openapi())
         .nest("/api", api_routes)

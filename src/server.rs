@@ -70,6 +70,21 @@ impl Server {
             "Logger configuration loaded"
         );
 
+        // Log JWT configuration (without sensitive secret)
+        tracing::info!(
+            access_token_expiration = %self.settings.jwt.access_token_expiration,
+            refresh_token_expiration = %self.settings.jwt.refresh_token_expiration,
+            secret_configured = %(!self.settings.jwt.secret.is_empty()),
+            "JWT configuration loaded"
+        );
+
+        // Validate JWT configuration
+        self.settings.jwt.validate().map_err(|e| {
+            tracing::error!(error = %e, "JWT configuration validation failed");
+            anyhow::anyhow!("JWT configuration validation failed: {}", e)
+        })?;
+        tracing::info!("JWT configuration validated");
+
         tracing::info!("Configuration loaded successfully");
 
         // Initialize database connection pool
@@ -78,7 +93,7 @@ impl Server {
         tracing::info!("Database connection pool initialized");
 
         // Create application state with services
-        let state = AppState::new(pool);
+        let state = AppState::new(pool, self.settings.jwt.clone());
         tracing::info!("Application state created");
 
         // Create router with all routes and middleware

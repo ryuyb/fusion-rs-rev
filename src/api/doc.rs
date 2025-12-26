@@ -2,6 +2,7 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 
 pub const USER_TAG: &str = "User";
+pub const AUTH_TAG: &str = "Auth";
 pub const HEALTH_TAG: &str = "Health";
 
 #[derive(OpenApi)]
@@ -14,17 +15,25 @@ pub const HEALTH_TAG: &str = "Health";
         crate::api::handlers::health::health_check,
         crate::api::handlers::health::readiness_check,
         crate::api::handlers::health::liveness_check,
+        crate::api::handlers::auth::login,
+        crate::api::handlers::auth::register,
     ),
     components(
         schemas(
             crate::api::handlers::health::HealthResponse,
             crate::api::handlers::health::HealthStatus,
             crate::api::handlers::health::ComponentHealth,
+            crate::api::handlers::auth::LoginRequest,
+            crate::api::handlers::auth::LoginResponse,
+            crate::api::handlers::auth::RegisterRequest,
+            crate::api::handlers::auth::RegisterResponse,
+            crate::api::handlers::auth::UserInfo,
         )
     ),
     modifiers(&SecurityAddon),
     tags(
         (name = USER_TAG, description = "User management endpoints"),
+        (name = AUTH_TAG, description = "User authentication endpoints"),
         (name = HEALTH_TAG, description = "Health check and monitoring endpoints")
     ),
 )]
