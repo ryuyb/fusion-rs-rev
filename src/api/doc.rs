@@ -15,24 +15,6 @@ pub const HEALTH_TAG: &str = "Health";
         crate::api::handlers::health::health_check,
         crate::api::handlers::health::readiness_check,
         crate::api::handlers::health::liveness_check,
-        crate::api::handlers::auth::login,
-        crate::api::handlers::auth::register,
-        crate::api::handlers::auth::refresh_token,
-        crate::api::handlers::me::get_me,
-    ),
-    components(
-        schemas(
-            crate::api::handlers::health::HealthResponse,
-            crate::api::handlers::health::HealthStatus,
-            crate::api::handlers::health::ComponentHealth,
-            crate::api::handlers::auth::LoginRequest,
-            crate::api::handlers::auth::LoginResponse,
-            crate::api::handlers::auth::RegisterRequest,
-            crate::api::handlers::auth::RegisterResponse,
-            crate::api::handlers::auth::RefreshTokenRequest,
-            crate::api::handlers::auth::RefreshTokenResponse,
-            crate::api::handlers::auth::UserInfo,
-        )
     ),
     modifiers(&SecurityAddon),
     tags(
