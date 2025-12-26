@@ -6,7 +6,6 @@
 //! and request ID extraction for correlation.
 
 use axum::{
-    extract::rejection::{JsonRejection, PathRejection, QueryRejection},
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
@@ -103,88 +102,6 @@ impl IntoResponse for AppError {
 
         (status, Json(error_response)).into_response()
     }
-}
-
-/// Converts axum JSON rejection errors to ErrorResponse.
-pub fn handle_json_rejection(rejection: JsonRejection) -> Response {
-    let (status, error_response) = match rejection {
-        JsonRejection::JsonDataError(err) => (
-            StatusCode::BAD_REQUEST,
-            ErrorResponse::new("INVALID_JSON", "Invalid JSON format")
-                .with_details(json!({
-                    "error": err.to_string()
-                })),
-        ),
-        JsonRejection::JsonSyntaxError(err) => (
-            StatusCode::BAD_REQUEST,
-            ErrorResponse::new("JSON_SYNTAX_ERROR", "JSON syntax error")
-                .with_details(json!({
-                    "error": err.to_string()
-                })),
-        ),
-        JsonRejection::MissingJsonContentType(_) => (
-            StatusCode::BAD_REQUEST,
-            ErrorResponse::new("MISSING_CONTENT_TYPE", "Missing or invalid Content-Type header")
-                .with_details(json!({
-                    "expected": "application/json"
-                })),
-        ),
-        JsonRejection::BytesRejection(_) => (
-            StatusCode::BAD_REQUEST,
-            ErrorResponse::new("REQUEST_TOO_LARGE", "Request body too large"),
-        ),
-        _ => (
-            StatusCode::BAD_REQUEST,
-            ErrorResponse::new("JSON_ERROR", "Failed to parse JSON request"),
-        ),
-    };
-
-    (status, Json(error_response)).into_response()
-}
-
-/// Converts axum path rejection errors to ErrorResponse.
-pub fn handle_path_rejection(rejection: PathRejection) -> Response {
-    let (status, error_response) = match rejection {
-        PathRejection::FailedToDeserializePathParams(err) => (
-            StatusCode::BAD_REQUEST,
-            ErrorResponse::new("INVALID_PATH_PARAMS", "Invalid path parameters")
-                .with_details(json!({
-                    "error": err.to_string()
-                })),
-        ),
-        PathRejection::MissingPathParams(err) => (
-            StatusCode::BAD_REQUEST,
-            ErrorResponse::new("MISSING_PATH_PARAMS", "Missing required path parameters")
-                .with_details(json!({
-                    "error": err.to_string()
-                })),
-        ),
-        _ => (
-            StatusCode::BAD_REQUEST,
-            ErrorResponse::new("PATH_ERROR", "Invalid path parameters"),
-        ),
-    };
-
-    (status, Json(error_response)).into_response()
-}
-
-/// Converts axum query rejection errors to ErrorResponse.
-pub fn handle_query_rejection(rejection: QueryRejection) -> Response {
-    let (status, error_response) = match rejection {
-        QueryRejection::FailedToDeserializeQueryString(err) => (
-            StatusCode::BAD_REQUEST,
-            ErrorResponse::new("INVALID_QUERY_PARAMS", "Invalid query parameters")
-                .with_details(json!({
-                    "error": err.to_string()
-                })),
-        ),
-        _ => (
-            StatusCode::BAD_REQUEST,
-            ErrorResponse::new("QUERY_ERROR", "Invalid query parameters"),
-        ),
-    };
-
-    (status, Json(error_response)).into_response()
 }
 
 /// Global error handling middleware that catches any unhandled errors
@@ -324,6 +241,7 @@ pub async fn global_error_handler(
 /// Maps an AppError variant to its corresponding HTTP status code.
 ///
 /// This function is useful for testing and validation purposes.
+#[allow(dead_code)]
 pub fn error_to_status_code(error: &AppError) -> StatusCode {
     match error {
         AppError::NotFound { .. } => StatusCode::NOT_FOUND,
@@ -343,6 +261,7 @@ pub fn error_to_status_code(error: &AppError) -> StatusCode {
 /// Maps an AppError variant to its error code string.
 ///
 /// This function is useful for testing and validation purposes.
+#[allow(dead_code)]
 pub fn error_to_code(error: &AppError) -> &'static str {
     match error {
         AppError::NotFound { .. } => "NOT_FOUND",
@@ -370,6 +289,7 @@ pub fn error_to_code(error: &AppError) -> &'static str {
 ///
 /// # Returns
 /// An HTTP Response with appropriate status code and JSON error body
+#[allow(dead_code)]
 pub fn error_to_response_with_request_id(error: AppError, request_id: Option<String>) -> Response {
     let (status, mut error_response) = match &error {
         AppError::NotFound { entity, field, value } => (
@@ -597,30 +517,6 @@ mod tests {
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
-    #[test]
-    fn test_handle_json_rejection() {
-        // Test with a simple JsonRejection variant that we can construct
-        use axum::extract::rejection::MissingJsonContentType;
-        
-        let rejection = JsonRejection::MissingJsonContentType(MissingJsonContentType::default());
-        let response = handle_json_rejection(rejection);
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-    }
-
-    #[test]
-    fn test_handle_path_rejection() {
-        // For path rejection, we'll test the function exists and handles unknown variants
-        // Since we can't easily construct specific variants in tests, we'll test the default case
-        // This is more of a compilation test to ensure the function signature is correct
-        assert!(true); // Placeholder test
-    }
-
-    #[test]
-    fn test_handle_query_rejection() {
-        // Similar to path rejection, this is mainly a compilation test
-        assert!(true); // Placeholder test
-    }
-
     #[tokio::test]
     async fn test_global_error_handler_bad_request() {
         // This is a simple test to verify that the global_error_handler function
@@ -648,7 +544,6 @@ mod tests {
         // Test that the global error handler can extract error messages from the original response
         use axum::response::Response;
         use axum::body::Body;
-        use axum::http::HeaderValue;
         
         // Create a response with a custom error message in the body
         let custom_error_message = "Custom validation failed";

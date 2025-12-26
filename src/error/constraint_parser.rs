@@ -13,6 +13,7 @@ struct RegexPatterns {
     key_value: Regex,
     column_name: Regex,
     table_name: Regex,
+    #[allow(dead_code)]
     constraint_name: Regex,
 }
 
@@ -345,6 +346,7 @@ impl ConstraintParser {
     ///
     /// # Returns
     /// Optional structured constraint information as a HashMap
+    #[allow(dead_code)]
     pub fn parse_constraint_violation(
         message: &str,
         constraint_name: Option<&str>,

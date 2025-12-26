@@ -61,7 +61,6 @@ pub async fn logging_middleware(request: Request, next: Next) -> Response {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_request_id_default_value() {

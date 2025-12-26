@@ -81,11 +81,13 @@ impl ConfigLoader {
     }
 
     /// Get the current application environment
+    #[allow(dead_code)]
     pub fn environment(&self) -> AppEnvironment {
         self.environment
     }
 
     /// Get the configuration directory path
+    #[allow(dead_code)]
     pub fn config_dir(&self) -> &PathBuf {
         &self.config_dir
     }

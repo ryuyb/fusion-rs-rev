@@ -32,6 +32,7 @@ impl ErrorResponse {
     }
 
     /// Adds request ID to the error response for correlation.
+    #[allow(dead_code)]
     pub fn with_request_id(mut self, request_id: &str) -> Self {
         self.request_id = Some(request_id.to_string());
         self

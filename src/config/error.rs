@@ -49,16 +49,6 @@ impl ConfigError {
         ConfigError::FileNotFound(path.into())
     }
 
-    /// Create a new parse error
-    pub fn parse<S: Into<String>>(message: S) -> Self {
-        ConfigError::ParseError(message.into())
-    }
-
-    /// Create a new environment variable error
-    pub fn env_var<S: Into<String>>(message: S) -> Self {
-        ConfigError::EnvVarError(message.into())
-    }
-
     /// Create a new mutual exclusivity error
     pub fn mutual_exclusivity<S: Into<String>>(message: S) -> Self {
         ConfigError::MutualExclusivityError(message.into())
