@@ -1,0 +1,96 @@
+# =============================================================================
+# Production Docker Compose override
+# =============================================================================
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+version: '3.8'
+
+services:
+  # -----------------------------------------------------------------------------
+  # Application Service - Production Overrides
+  # -----------------------------------------------------------------------------
+  app:
+    restart: always
+    environment:
+      # Production logging configuration
+      FUSION_LOGGER__LEVEL: "warn"
+      FUSION_LOGGER__CONSOLE__COLORED: "false"
+      FUSION_LOGGER__FILE__ENABLED: "true"
+      FUSION_LOGGER__FILE__FORMAT: "json"
+      FUSION_LOGGER__FILE__ROTATION__STRATEGY: "size"
+      FUSION_LOGGER__FILE__ROTATION__MAX_SIZE: "52428800"  # 50MB
+      FUSION_LOGGER__FILE__ROTATION__MAX_FILES: "10"
+      FUSION_LOGGER__FILE__ROTATION__COMPRESS: "true"
+      
+      # Production server configuration
+      FUSION_SERVER__REQUEST_TIMEOUT: "30"
+      FUSION_SERVER__KEEP_ALIVE_TIMEOUT: "75"
+      
+      # Production database configuration
+      FUSION_DATABASE__MAX_CONNECTIONS: "20"
+      FUSION_DATABASE__MIN_CONNECTIONS: "5"
+      FUSION_DATABASE__CONNECTION_TIMEOUT: "30"
+      
+      # Rust logging
+      RUST_LOG: "warn,fusion_rs=info"
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    
+    # Health check with more conservative settings
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # -----------------------------------------------------------------------------
+  # PostgreSQL Database Service - Production Overrides
+  # -----------------------------------------------------------------------------
+  postgres:
+    restart: always
+    environment:
+      # Production database settings
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=en_US.UTF-8 --lc-ctype=en_US.UTF-8"
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Production health check
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fusion_user -d fusion_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    
+    # Additional PostgreSQL configuration for production
+    command: >
+      postgres
+      -c max_connections=100
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=4MB
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB

@@ -1,0 +1,60 @@
+# =============================================================================
+# Docker ignore file for Rust application
+# =============================================================================
+
+# Rust build artifacts
+target/
+Cargo.lock
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Logs
+logs/
+*.log
+
+# Environment files (may contain secrets)
+.env
+.env.local
+.env.*.local
+
+# Documentation
+docs/
+README.md
+*.md
+
+# Test files
+proptest-regressions/
+
+# Temporary files
+tmp/
+temp/
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Kiro specific
+.kiro/
