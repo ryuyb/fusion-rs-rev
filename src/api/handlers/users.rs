@@ -10,7 +10,7 @@ use axum::{
 };
 
 use crate::api::dto::{CreateUserRequest, UpdateUserRequest, UserResponse};
-use crate::error::AppError;
+use crate::error::{AppError, AppResult};
 use crate::state::AppState;
 
 /// Creates user-related routes.
@@ -32,7 +32,7 @@ pub fn user_routes() -> Router<AppState> {
 /// Returns a JSON array of all users.
 async fn list_users(
     State(state): State<AppState>,
-) -> Result<Json<Vec<UserResponse>>, AppError> {
+) -> AppResult<Json<Vec<UserResponse>>> {
     let users = state.services.users.list_users().await?;
     let responses: Vec<UserResponse> = users.into_iter().map(UserResponse::from).collect();
     Ok(Json(responses))
@@ -44,7 +44,7 @@ async fn list_users(
 async fn get_user(
     State(state): State<AppState>,
     Path(id): Path<i32>,
-) -> Result<Json<UserResponse>, AppError> {
+) -> AppResult<Json<UserResponse>> {
     let user = state.services.users.get_user(id).await?;
     Ok(Json(UserResponse::from(user)))
 }
@@ -56,7 +56,7 @@ async fn get_user(
 async fn create_user(
     State(state): State<AppState>,
     Json(payload): Json<CreateUserRequest>,
-) -> Result<(StatusCode, Json<UserResponse>), AppError> {
+) -> AppResult<(StatusCode, Json<UserResponse>)> {
     let new_user = payload.into_new_user();
     let user = state.services.users.create_user(new_user).await?;
     Ok((StatusCode::CREATED, Json(UserResponse::from(user))))
@@ -70,7 +70,7 @@ async fn update_user(
     State(state): State<AppState>,
     Path(id): Path<i32>,
     Json(payload): Json<UpdateUserRequest>,
-) -> Result<Json<UserResponse>, AppError> {
+) -> AppResult<Json<UserResponse>> {
     let update_data = payload.into_update_user();
     let user = state.services.users.update_user(id, update_data).await?;
     Ok(Json(UserResponse::from(user)))
@@ -83,11 +83,15 @@ async fn update_user(
 async fn delete_user(
     State(state): State<AppState>,
     Path(id): Path<i32>,
-) -> Result<StatusCode, AppError> {
+) -> AppResult<StatusCode> {
     let deleted = state.services.users.delete_user(id).await?;
     if deleted {
         Ok(StatusCode::NO_CONTENT)
     } else {
-        Err(AppError::NotFound)
+        Err(AppError::NotFound {
+            entity: "user".to_string(),
+            field: "id".to_string(),
+            value: id.to_string(),
+        })
     }
 }

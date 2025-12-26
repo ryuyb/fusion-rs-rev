@@ -5,7 +5,7 @@
 use std::time::Duration;
 
 use crate::config::DatabaseConfig;
-use crate::error::AppError;
+use crate::error::{AppError, AppResult};
 use diesel_async::pooled_connection::bb8::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
@@ -37,8 +37,8 @@ pub type AsyncDbPool = Pool<AsyncPgConnection>;
 ///
 /// # Errors
 ///
-/// - `AppError::Env` - If database URL is not configured and DATABASE_URL env var is not set
-/// - `AppError::PoolBuild` - If connection pool creation fails
+/// - `AppError::Configuration` - If database URL is not configured and DATABASE_URL env var is not set
+/// - `AppError::ConnectionPool` - If connection pool creation fails
 ///
 /// # Example
 ///
@@ -54,7 +54,7 @@ pub type AsyncDbPool = Pool<AsyncPgConnection>;
 /// ```
 pub async fn establish_async_connection_pool(
     config: &DatabaseConfig,
-) -> Result<AsyncDbPool, AppError> {
+) -> AppResult<AsyncDbPool> {
     let database_url = config.url.clone();
     let manager = AsyncDieselConnectionManager::<AsyncPgConnection>::new(database_url.clone());
 
@@ -63,7 +63,8 @@ pub async fn establish_async_connection_pool(
         .min_idle(Some(config.min_connections))
         .connection_timeout(Duration::from_secs(config.connection_timeout))
         .build(manager)
-        .await?;
+        .await
+        .map_err(|e| AppError::ConnectionPool { source: anyhow::Error::from(e) })?;
 
     // Run pending migrations if auto_migrate is enabled
     if config.auto_migrate {
@@ -74,16 +75,22 @@ pub async fn establish_async_connection_pool(
             use diesel::Connection;
 
             let mut conn = PgConnection::establish(&database_url)
-                .map_err(|e| AppError::Migration(Box::new(e)))?;
+                .map_err(|e| AppError::Database { 
+                    operation: "establish migration connection".to_string(),
+                    source: anyhow::anyhow!("Connection error: {}", e) 
+                })?;
             let applied = conn
                 .run_pending_migrations(MIGRATIONS)
-                .map_err(|e| AppError::Migration(e))?;
+                .map_err(|e| AppError::Database { 
+                    operation: "run pending migrations".to_string(),
+                    source: anyhow::anyhow!("Migration error: {}", e) 
+                })?;
             // Convert to owned strings to avoid lifetime issues
             let migration_names: Vec<String> = applied.iter().map(|m| m.to_string()).collect();
             Ok::<_, AppError>(migration_names)
         })
         .await
-        .map_err(|e| AppError::Migration(Box::new(e)))??;
+        .map_err(|e| AppError::Internal { source: anyhow::Error::from(e) })??;
 
         if migrations_result.is_empty() {
             tracing::info!("Database migrations completed: no pending migrations");

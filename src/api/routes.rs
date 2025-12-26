@@ -6,15 +6,16 @@
 use axum::{middleware, Router};
 
 use crate::api::handlers;
-use crate::api::middleware::{logging_middleware, request_id_middleware};
+use crate::api::middleware::{global_error_handler, logging_middleware, request_id_middleware};
 use crate::state::AppState;
 
 /// Creates the main application router with all routes and middleware.
 ///
 /// # Middleware Order
 /// Middleware is applied in reverse order of declaration (last added runs first):
-/// 1. Request ID middleware (runs first) - generates/propagates request IDs
-/// 2. Logging middleware (runs second) - logs requests with request IDs
+/// 1. Global error handler (runs first) - catches and formats any unhandled errors
+/// 2. Request ID middleware (runs second) - generates/propagates request IDs
+/// 3. Logging middleware (runs third) - logs requests with request IDs
 ///
 /// # Routes
 /// - `/api/users` - User CRUD operations
@@ -22,6 +23,7 @@ use crate::state::AppState;
 /// # Requirements
 /// - 2.1: Provides /api/users endpoint group
 /// - 2.7: Applies middleware layers in correct order
+/// - 4.1-4.12: Consistent error response formatting
 ///
 /// # Example
 /// ```ignore
@@ -35,9 +37,10 @@ pub fn create_router(state: AppState) -> Router {
     Router::new()
         .nest("/api", api_routes)
         // Middleware is applied in reverse order - last added runs first
-        // So logging runs after request_id has set the ID
+        // So: global_error_handler -> request_id -> logging
         .layer(middleware::from_fn(logging_middleware))
         .layer(middleware::from_fn(request_id_middleware))
+        .layer(middleware::from_fn(global_error_handler))
         .with_state(state)
 }
 
