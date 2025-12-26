@@ -10,17 +10,18 @@
 # -----------------------------------------------------------------------------
 # Development server settings - local access only
 [server]
-host = "127.0.0.1"
-port = 3000
+host = "0.0.0.0"
+port = 8080
 
 # -----------------------------------------------------------------------------
 # Database Configuration
 # -----------------------------------------------------------------------------
 # Development database - uses local PostgreSQL
 [database]
-url = "postgres://localhost/fusion_dev"
+url = "postgres://postgres:postgres@localhost/fusion"
 max_connections = 5
 min_connections = 1
+auto_migrate = true
 
 # -----------------------------------------------------------------------------
 # Logger Configuration

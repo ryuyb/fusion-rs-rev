@@ -29,9 +29,9 @@ version = "0.1.0"
 [server]
 # Host address to bind the server
 # Use "127.0.0.1" for local-only access, "0.0.0.0" for all interfaces
-host = "127.0.0.1"
+host = "0.0.0.0"
 # Port number to listen on (1-65535)
-port = 3000
+port = 8080
 # Request timeout in seconds - maximum time to process a request
 request_timeout = 30
 # Keep-alive timeout in seconds - how long to keep idle connections open
@@ -52,6 +52,8 @@ max_connections = 10
 min_connections = 1
 # Connection timeout in seconds
 connection_timeout = 30
+# Automatically run pending migrations on startup
+auto_migrate = false
 
 # -----------------------------------------------------------------------------
 # Logger Configuration

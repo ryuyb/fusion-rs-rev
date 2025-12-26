@@ -23,6 +23,10 @@ pub enum AppError {
     #[error("Environment error: {0}")]
     Env(#[from] std::env::VarError),
 
+    /// Database migration error
+    #[error("Migration error: {0}")]
+    Migration(Box<dyn std::error::Error + Send + Sync>),
+
     /// Resource not found error
     #[error("Resource not found")]
     NotFound,

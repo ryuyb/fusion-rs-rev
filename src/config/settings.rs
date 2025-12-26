@@ -169,6 +169,10 @@ pub struct DatabaseConfig {
     /// Connection timeout in seconds
     #[serde(default = "default_connection_timeout")]
     pub connection_timeout: u64,
+
+    /// Whether to automatically run pending migrations on startup
+    #[serde(default)]
+    pub auto_migrate: bool,
 }
 
 impl Default for DatabaseConfig {
@@ -178,6 +182,7 @@ impl Default for DatabaseConfig {
             max_connections: default_max_connections(),
             min_connections: default_min_connections(),
             connection_timeout: default_connection_timeout(),
+            auto_migrate: false,
         }
     }
 }
@@ -492,6 +497,7 @@ mod tests {
                     max_connections,
                     min_connections: min,
                     connection_timeout,
+                    auto_migrate: false,
                 }
             })
     }
