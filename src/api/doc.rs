@@ -2,6 +2,7 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 
 pub const USER_TAG: &str = "User";
+pub const HEALTH_TAG: &str = "Health";
 
 #[derive(OpenApi)]
 #[openapi(
@@ -9,9 +10,22 @@ pub const USER_TAG: &str = "User";
         title = "Fusion",
         description = "An api server for Fusion",
     ),
+    paths(
+        crate::api::handlers::health::health_check,
+        crate::api::handlers::health::readiness_check,
+        crate::api::handlers::health::liveness_check,
+    ),
+    components(
+        schemas(
+            crate::api::handlers::health::HealthResponse,
+            crate::api::handlers::health::HealthStatus,
+            crate::api::handlers::health::ComponentHealth,
+        )
+    ),
     modifiers(&SecurityAddon),
     tags(
-        (name = USER_TAG, description = "User management endpoints")
+        (name = USER_TAG, description = "User management endpoints"),
+        (name = HEALTH_TAG, description = "Health check and monitoring endpoints")
     ),
 )]
 pub struct ApiDoc;

@@ -7,15 +7,16 @@ use crate::db::AsyncDbPool;
 use crate::repositories::Repositories;
 use crate::services::Services;
 
-/// Application state containing all shared services.
+/// Application state containing all shared services and resources.
 ///
 /// This struct is designed to be used with Axum's State extractor.
-/// Cloning is cheap since Services uses Arc internally via the
-/// underlying database connection pool.
+/// Cloning is cheap since both Services and AsyncDbPool use Arc internally.
 #[derive(Clone)]
 pub struct AppState {
     /// All business logic services
     pub services: Services,
+    /// Direct access to the database connection pool
+    pub db_pool: AsyncDbPool,
 }
 
 impl AppState {
@@ -32,8 +33,11 @@ impl AppState {
     /// let state = AppState::new(pool);
     /// ```
     pub fn new(pool: AsyncDbPool) -> Self {
-        let repos = Repositories::new(pool);
+        let repos = Repositories::new(pool.clone());
         let services = Services::new(repos);
-        Self { services }
+        Self { 
+            services,
+            db_pool: pool,
+        }
     }
 }
