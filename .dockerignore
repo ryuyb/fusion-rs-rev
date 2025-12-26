@@ -4,7 +4,7 @@
 
 # Rust build artifacts
 target/
-Cargo.lock
+# Note: Keep Cargo.lock for reproducible builds in Docker
 
 # IDE and editor files
 .idea/

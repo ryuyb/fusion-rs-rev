@@ -12,7 +12,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: ${DOCKER_TARGET:-amd64}  # Default to amd64, can be overridden
     container_name: fusion-rs-app
     ports:
       - "8080:8080"
