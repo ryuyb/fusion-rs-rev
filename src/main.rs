@@ -1,3 +1,4 @@
+mod config;
 mod db;
 mod error;
 mod logger;
@@ -5,42 +6,53 @@ mod models;
 mod repositories;
 mod schema;
 
-use logger::{LoggerConfig, init_logger};
-use crate::logger::LogFormat;
+use config::{ConfigLoader, Environment};
+use logger::init_logger;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Initialize the advanced logger with default configuration
-    let mut config = LoggerConfig::default();
-    config.level = "trace".to_string();
-    config.file.enabled = true;
-    config.file.append = false;
-    config.file.format = LogFormat::Json;
-    let handle = init_logger(config)?;
+    // Load configuration from files and environment variables
+    let loader = ConfigLoader::new()?;
+    let settings = loader.load()?;
 
-    println!("Hello, world!");
-    tracing::trace!("Hello, world!");
-    tracing::debug!("Hello, world!");
-    tracing::info!("Hello, world!");
-    tracing::warn!("Hello, world!");
-    tracing::error!("Hello, world!");
+    // Convert LoggerSettings to LoggerConfig and initialize the logger
+    let logger_config = settings.logger.clone().into_logger_config()?;
+    let _handle = init_logger(logger_config)?;
 
-    // Create and enter a span
-    let span = tracing::info_span!("my_operation", user_id = 123);
-    {
-        let _enter = span.enter();
+    // Log application startup information
+    tracing::info!(
+        app_name = %settings.application.name,
+        app_version = %settings.application.version,
+        environment = %Environment::from_env().as_str(),
+        "Application starting"
+    );
 
-        tracing::info!("Inside the span");
-        tracing::debug!("Doing some work...");
-    }
-    
-    // The span will be exited when _enter is dropped
+    // Log server configuration
+    tracing::info!(
+        host = %settings.server.host,
+        port = %settings.server.port,
+        request_timeout = %settings.server.request_timeout,
+        keep_alive_timeout = %settings.server.keep_alive_timeout,
+        "Server configuration loaded"
+    );
 
-    tracing::info!("Outside the span");
+    // Log database configuration (without sensitive URL details)
+    tracing::info!(
+        max_connections = %settings.database.max_connections,
+        min_connections = %settings.database.min_connections,
+        connection_timeout = %settings.database.connection_timeout,
+        "Database configuration loaded"
+    );
 
-    handle.set_level("info")?;
-    tracing::debug!("Hello, world after change!");
-    tracing::info!("Hello, world after change!");
+    // Log logger configuration
+    tracing::info!(
+        level = %settings.logger.level,
+        console_enabled = %settings.logger.console.enabled,
+        file_enabled = %settings.logger.file.enabled,
+        "Logger configuration loaded"
+    );
+
+    tracing::info!("Configuration loaded successfully");
 
     Ok(())
 }

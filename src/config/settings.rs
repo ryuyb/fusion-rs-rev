@@ -1,0 +1,1000 @@
+//! Configuration settings structures for fusion-rs
+//!
+//! This module defines all configuration structures that can be loaded from
+//! TOML files and environment variables.
+
+use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+
+use crate::config::error::ConfigError;
+use crate::logger::{
+    ConsoleConfig, FileConfig, LogFormat, LoggerConfig, RotationConfig, RotationStrategy,
+};
+
+// ============================================================================
+// Default value functions
+// ============================================================================
+
+fn default_app_name() -> String {
+    "fusion-rs".to_string()
+}
+
+fn default_app_version() -> String {
+    "0.1.0".to_string()
+}
+
+fn default_host() -> String {
+    "127.0.0.1".to_string()
+}
+
+fn default_port() -> u16 {
+    3000
+}
+
+fn default_request_timeout() -> u64 {
+    30
+}
+
+fn default_keep_alive_timeout() -> u64 {
+    75
+}
+
+fn default_max_connections() -> u32 {
+    10
+}
+
+fn default_min_connections() -> u32 {
+    1
+}
+
+fn default_connection_timeout() -> u64 {
+    30
+}
+
+fn default_log_level() -> String {
+    "info".to_string()
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_log_path() -> String {
+    "logs/app.log".to_string()
+}
+
+fn default_log_format() -> String {
+    "json".to_string()
+}
+
+fn default_rotation_strategy() -> String {
+    "size".to_string()
+}
+
+fn default_max_size() -> u64 {
+    10 * 1024 * 1024 // 10MB
+}
+
+fn default_max_files() -> usize {
+    5
+}
+
+// ============================================================================
+// Application Configuration
+// ============================================================================
+
+/// Application basic information configuration
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ApplicationConfig {
+    /// Application name
+    #[serde(default = "default_app_name")]
+    pub name: String,
+
+    /// Application version
+    #[serde(default = "default_app_version")]
+    pub version: String,
+}
+
+impl Default for ApplicationConfig {
+    fn default() -> Self {
+        Self {
+            name: default_app_name(),
+            version: default_app_version(),
+        }
+    }
+}
+
+// ============================================================================
+// Server Configuration
+// ============================================================================
+
+/// Axum HTTP server configuration
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ServerConfig {
+    /// Server host address
+    #[serde(default = "default_host")]
+    pub host: String,
+
+    /// Server port
+    #[serde(default = "default_port")]
+    pub port: u16,
+
+    /// Request timeout in seconds
+    #[serde(default = "default_request_timeout")]
+    pub request_timeout: u64,
+
+    /// Keep-alive timeout in seconds
+    #[serde(default = "default_keep_alive_timeout")]
+    pub keep_alive_timeout: u64,
+}
+
+impl ServerConfig {
+    /// Get the full server address as "host:port"
+    pub fn address(&self) -> String {
+        format!("{}:{}", self.host, self.port)
+    }
+}
+
+impl Default for ServerConfig {
+    fn default() -> Self {
+        Self {
+            host: default_host(),
+            port: default_port(),
+            request_timeout: default_request_timeout(),
+            keep_alive_timeout: default_keep_alive_timeout(),
+        }
+    }
+}
+
+// ============================================================================
+// Database Configuration
+// ============================================================================
+
+/// Diesel database connection configuration
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DatabaseConfig {
+    /// Database connection URL
+    #[serde(default)]
+    pub url: String,
+
+    /// Maximum number of connections in the pool
+    #[serde(default = "default_max_connections")]
+    pub max_connections: u32,
+
+    /// Minimum number of connections in the pool
+    #[serde(default = "default_min_connections")]
+    pub min_connections: u32,
+
+    /// Connection timeout in seconds
+    #[serde(default = "default_connection_timeout")]
+    pub connection_timeout: u64,
+}
+
+impl Default for DatabaseConfig {
+    fn default() -> Self {
+        Self {
+            url: String::new(),
+            max_connections: default_max_connections(),
+            min_connections: default_min_connections(),
+            connection_timeout: default_connection_timeout(),
+        }
+    }
+}
+
+
+// ============================================================================
+// Logger Settings (compatible with existing LoggerConfig)
+// ============================================================================
+
+/// Console output settings
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConsoleSettings {
+    /// Whether console output is enabled
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+
+    /// Whether to use colored output
+    #[serde(default = "default_true")]
+    pub colored: bool,
+}
+
+impl Default for ConsoleSettings {
+    fn default() -> Self {
+        Self {
+            enabled: default_true(),
+            colored: default_true(),
+        }
+    }
+}
+
+/// Rotation settings for file logging
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RotationSettings {
+    /// Rotation strategy: "size", "time", "count", or "combined"
+    #[serde(default = "default_rotation_strategy")]
+    pub strategy: String,
+
+    /// Maximum file size in bytes before rotation
+    #[serde(default = "default_max_size")]
+    pub max_size: u64,
+
+    /// Maximum number of rotated files to keep
+    #[serde(default = "default_max_files")]
+    pub max_files: usize,
+
+    /// Whether to compress rotated files
+    #[serde(default)]
+    pub compress: bool,
+}
+
+impl Default for RotationSettings {
+    fn default() -> Self {
+        Self {
+            strategy: default_rotation_strategy(),
+            max_size: default_max_size(),
+            max_files: default_max_files(),
+            compress: false,
+        }
+    }
+}
+
+/// File output settings
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FileSettings {
+    /// Whether file output is enabled
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Path to the log file
+    #[serde(default = "default_log_path")]
+    pub path: String,
+
+    /// Whether to append to existing file
+    #[serde(default = "default_true")]
+    pub append: bool,
+
+    /// Log format: "full", "compact", or "json"
+    #[serde(default = "default_log_format")]
+    pub format: String,
+
+    /// Rotation settings
+    #[serde(default)]
+    pub rotation: RotationSettings,
+}
+
+impl Default for FileSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            path: default_log_path(),
+            append: default_true(),
+            format: default_log_format(),
+            rotation: RotationSettings::default(),
+        }
+    }
+}
+
+/// Logger configuration settings (compatible with existing LoggerConfig)
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LoggerSettings {
+    /// Log level: "trace", "debug", "info", "warn", "error"
+    #[serde(default = "default_log_level")]
+    pub level: String,
+
+    /// Console output settings
+    #[serde(default)]
+    pub console: ConsoleSettings,
+
+    /// File output settings
+    #[serde(default)]
+    pub file: FileSettings,
+}
+
+impl Default for LoggerSettings {
+    fn default() -> Self {
+        Self {
+            level: default_log_level(),
+            console: ConsoleSettings::default(),
+            file: FileSettings::default(),
+        }
+    }
+}
+
+impl LoggerSettings {
+    /// Convert LoggerSettings to LoggerConfig
+    ///
+    /// This method transforms the configuration file representation into
+    /// the runtime LoggerConfig used by the logger module.
+    pub fn into_logger_config(self) -> Result<LoggerConfig, ConfigError> {
+        let console_config = self.console.into_console_config();
+        let file_config = self.file.into_file_config()?;
+
+        LoggerConfig::new(console_config, file_config, self.level).map_err(|e| {
+            ConfigError::ValidationError {
+                field: "logger".to_string(),
+                message: e.to_string(),
+            }
+        })
+    }
+}
+
+impl ConsoleSettings {
+    /// Convert ConsoleSettings to ConsoleConfig
+    pub fn into_console_config(self) -> ConsoleConfig {
+        ConsoleConfig::new(self.enabled, self.colored)
+    }
+}
+
+impl FileSettings {
+    /// Convert FileSettings to FileConfig
+    pub fn into_file_config(self) -> Result<FileConfig, ConfigError> {
+        let format = self.parse_format()?;
+        let rotation_config = self.rotation.into_rotation_config()?;
+
+        FileConfig::new(
+            self.enabled,
+            PathBuf::from(self.path),
+            self.append,
+            format,
+            rotation_config,
+        )
+        .map_err(|e| ConfigError::ValidationError {
+            field: "logger.file".to_string(),
+            message: e.to_string(),
+        })
+    }
+
+    /// Parse the format string into LogFormat enum
+    fn parse_format(&self) -> Result<LogFormat, ConfigError> {
+        self.format.parse::<LogFormat>().map_err(|e| {
+            ConfigError::ValidationError {
+                field: "logger.file.format".to_string(),
+                message: e.to_string(),
+            }
+        })
+    }
+}
+
+impl RotationSettings {
+    /// Convert RotationSettings to RotationConfig
+    pub fn into_rotation_config(self) -> Result<RotationConfig, ConfigError> {
+        let strategy = self.parse_strategy()?;
+
+        RotationConfig::new(strategy, self.max_size, self.max_files, self.compress).map_err(|e| {
+            ConfigError::ValidationError {
+                field: "logger.file.rotation".to_string(),
+                message: e.to_string(),
+            }
+        })
+    }
+
+    /// Parse the strategy string into RotationStrategy enum
+    fn parse_strategy(&self) -> Result<RotationStrategy, ConfigError> {
+        match self.strategy.to_lowercase().as_str() {
+            "size" => Ok(RotationStrategy::Size),
+            "count" => Ok(RotationStrategy::Count),
+            "combined" => Ok(RotationStrategy::Combined),
+            // Time-based strategies with time unit suffix
+            "time" | "time_daily" | "daily" => {
+                Ok(RotationStrategy::Time(crate::logger::TimeUnit::Daily))
+            }
+            "time_hourly" | "hourly" => {
+                Ok(RotationStrategy::Time(crate::logger::TimeUnit::Hourly))
+            }
+            "time_weekly" | "weekly" => {
+                Ok(RotationStrategy::Time(crate::logger::TimeUnit::Weekly))
+            }
+            "time_monthly" | "monthly" => {
+                Ok(RotationStrategy::Time(crate::logger::TimeUnit::Monthly))
+            }
+            _ => Err(ConfigError::ValidationError {
+                field: "logger.file.rotation.strategy".to_string(),
+                message: format!(
+                    "Invalid rotation strategy '{}'. Valid strategies are: size, time, daily, hourly, weekly, monthly, count, combined",
+                    self.strategy
+                ),
+            }),
+        }
+    }
+}
+
+// ============================================================================
+// Main Settings Structure
+// ============================================================================
+
+/// Complete application settings
+///
+/// This structure represents the entire configuration that can be loaded
+/// from TOML files and environment variables.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Settings {
+    /// Application information
+    #[serde(default)]
+    pub application: ApplicationConfig,
+
+    /// Server configuration
+    #[serde(default)]
+    pub server: ServerConfig,
+
+    /// Database configuration
+    #[serde(default)]
+    pub database: DatabaseConfig,
+
+    /// Logger configuration
+    #[serde(default)]
+    pub logger: LoggerSettings,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            application: ApplicationConfig::default(),
+            server: ServerConfig::default(),
+            database: DatabaseConfig::default(),
+            logger: LoggerSettings::default(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    // ========================================================================
+    // Arbitrary implementations for property-based testing
+    // ========================================================================
+
+    fn arb_application_config() -> impl Strategy<Value = ApplicationConfig> {
+        (
+            "[a-z][a-z0-9-]{0,20}",  // name: valid app name
+            "[0-9]{1,2}\\.[0-9]{1,2}\\.[0-9]{1,2}",  // version: semver-like
+        )
+            .prop_map(|(name, version)| ApplicationConfig { name, version })
+    }
+
+    fn arb_server_config() -> impl Strategy<Value = ServerConfig> {
+        (
+            prop_oneof![
+                Just("127.0.0.1".to_string()),
+                Just("0.0.0.0".to_string()),
+                Just("localhost".to_string()),
+            ],
+            1u16..=65535u16,  // valid port range
+            1u64..=300u64,    // request_timeout
+            1u64..=300u64,    // keep_alive_timeout
+        )
+            .prop_map(|(host, port, request_timeout, keep_alive_timeout)| ServerConfig {
+                host,
+                port,
+                request_timeout,
+                keep_alive_timeout,
+            })
+    }
+
+    fn arb_database_config() -> impl Strategy<Value = DatabaseConfig> {
+        (
+            prop_oneof![
+                Just("postgres://localhost/test".to_string()),
+                Just("postgres://user:pass@host:5432/db".to_string()),
+                Just("sqlite://./test.db".to_string()),
+            ],
+            1u32..=100u32,  // max_connections
+            1u32..=10u32,   // min_connections
+            1u64..=120u64,  // connection_timeout
+        )
+            .prop_map(|(url, max_connections, min_connections, connection_timeout)| {
+                // Ensure min <= max
+                let min = min_connections.min(max_connections);
+                DatabaseConfig {
+                    url,
+                    max_connections,
+                    min_connections: min,
+                    connection_timeout,
+                }
+            })
+    }
+
+    fn arb_console_settings() -> impl Strategy<Value = ConsoleSettings> {
+        (any::<bool>(), any::<bool>()).prop_map(|(enabled, colored)| ConsoleSettings { enabled, colored })
+    }
+
+    fn arb_rotation_settings() -> impl Strategy<Value = RotationSettings> {
+        (
+            prop_oneof![
+                Just("size".to_string()),
+                Just("count".to_string()),
+                Just("combined".to_string()),
+                Just("daily".to_string()),
+                Just("hourly".to_string()),
+                Just("weekly".to_string()),
+                Just("monthly".to_string()),
+            ],
+            1024u64..=100_000_000u64,  // max_size
+            1usize..=20usize,          // max_files
+            any::<bool>(),             // compress
+        )
+            .prop_map(|(strategy, max_size, max_files, compress)| RotationSettings {
+                strategy,
+                max_size,
+                max_files,
+                compress,
+            })
+    }
+
+    fn arb_file_settings() -> impl Strategy<Value = FileSettings> {
+        (
+            any::<bool>(),  // enabled
+            prop_oneof![
+                Just("logs/app.log".to_string()),
+                Just("logs/test.log".to_string()),
+                Just("/var/log/app.log".to_string()),
+            ],
+            any::<bool>(),  // append
+            prop_oneof![
+                Just("json".to_string()),
+                Just("full".to_string()),
+                Just("compact".to_string()),
+            ],
+            arb_rotation_settings(),
+        )
+            .prop_map(|(enabled, path, append, format, rotation)| FileSettings {
+                enabled,
+                path,
+                append,
+                format,
+                rotation,
+            })
+    }
+
+    fn arb_logger_settings() -> impl Strategy<Value = LoggerSettings> {
+        (
+            prop_oneof![
+                Just("trace".to_string()),
+                Just("debug".to_string()),
+                Just("info".to_string()),
+                Just("warn".to_string()),
+                Just("error".to_string()),
+            ],
+            arb_console_settings(),
+            arb_file_settings(),
+        )
+            .prop_map(|(level, console, file)| LoggerSettings { level, console, file })
+    }
+
+    fn arb_settings() -> impl Strategy<Value = Settings> {
+        (
+            arb_application_config(),
+            arb_server_config(),
+            arb_database_config(),
+            arb_logger_settings(),
+        )
+            .prop_map(|(application, server, database, logger)| Settings {
+                application,
+                server,
+                database,
+                logger,
+            })
+    }
+
+    // ========================================================================
+    // Property-based tests
+    // ========================================================================
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// Feature: config-management, Property 7: Settings Round-Trip Serialization
+        /// *For any* valid Settings instance, serializing to TOML and then deserializing
+        /// back SHALL produce an equivalent Settings instance.
+        /// **Validates: Requirements 10.4**
+        #[test]
+        fn prop_settings_round_trip_serialization(settings in arb_settings()) {
+            // Serialize to TOML
+            let toml_str = toml::to_string(&settings)
+                .expect("Settings should serialize to TOML");
+
+            // Deserialize back
+            let deserialized: Settings = toml::from_str(&toml_str)
+                .expect("TOML should deserialize back to Settings");
+
+            // Verify equivalence
+            prop_assert_eq!(settings, deserialized);
+        }
+    }
+
+    // ========================================================================
+    // Unit tests
+    // ========================================================================
+
+    #[test]
+    fn test_application_config_defaults() {
+        let config = ApplicationConfig::default();
+        assert_eq!(config.name, "fusion-rs");
+        assert_eq!(config.version, "0.1.0");
+    }
+
+    #[test]
+    fn test_server_config_defaults() {
+        let config = ServerConfig::default();
+        assert_eq!(config.host, "127.0.0.1");
+        assert_eq!(config.port, 3000);
+        assert_eq!(config.request_timeout, 30);
+        assert_eq!(config.keep_alive_timeout, 75);
+    }
+
+    #[test]
+    fn test_server_config_address() {
+        let config = ServerConfig::default();
+        assert_eq!(config.address(), "127.0.0.1:3000");
+    }
+
+    #[test]
+    fn test_database_config_defaults() {
+        let config = DatabaseConfig::default();
+        assert_eq!(config.url, "");
+        assert_eq!(config.max_connections, 10);
+        assert_eq!(config.min_connections, 1);
+        assert_eq!(config.connection_timeout, 30);
+    }
+
+    #[test]
+    fn test_console_settings_defaults() {
+        let settings = ConsoleSettings::default();
+        assert!(settings.enabled);
+        assert!(settings.colored);
+    }
+
+    #[test]
+    fn test_rotation_settings_defaults() {
+        let settings = RotationSettings::default();
+        assert_eq!(settings.strategy, "size");
+        assert_eq!(settings.max_size, 10 * 1024 * 1024);
+        assert_eq!(settings.max_files, 5);
+        assert!(!settings.compress);
+    }
+
+    #[test]
+    fn test_file_settings_defaults() {
+        let settings = FileSettings::default();
+        assert!(!settings.enabled);
+        assert_eq!(settings.path, "logs/app.log");
+        assert!(settings.append);
+        assert_eq!(settings.format, "json");
+    }
+
+    #[test]
+    fn test_logger_settings_defaults() {
+        let settings = LoggerSettings::default();
+        assert_eq!(settings.level, "info");
+        assert!(settings.console.enabled);
+        assert!(!settings.file.enabled);
+    }
+
+    #[test]
+    fn test_settings_defaults() {
+        let settings = Settings::default();
+        assert_eq!(settings.application.name, "fusion-rs");
+        assert_eq!(settings.server.port, 3000);
+        assert_eq!(settings.database.max_connections, 10);
+        assert_eq!(settings.logger.level, "info");
+    }
+
+    #[test]
+    fn test_settings_serialization_roundtrip() {
+        let settings = Settings::default();
+        let toml_str = toml::to_string(&settings).expect("Failed to serialize");
+        let deserialized: Settings = toml::from_str(&toml_str).expect("Failed to deserialize");
+        assert_eq!(settings, deserialized);
+    }
+
+    #[test]
+    fn test_settings_deserialize_partial() {
+        let toml_str = r#"
+            [application]
+            name = "my-app"
+            
+            [server]
+            port = 8080
+        "#;
+        
+        let settings: Settings = toml::from_str(toml_str).expect("Failed to deserialize");
+        assert_eq!(settings.application.name, "my-app");
+        assert_eq!(settings.application.version, "0.1.0"); // default
+        assert_eq!(settings.server.port, 8080);
+        assert_eq!(settings.server.host, "127.0.0.1"); // default
+    }
+
+    #[test]
+    fn test_settings_deserialize_full() {
+        let toml_str = r#"
+            [application]
+            name = "test-app"
+            version = "1.0.0"
+            
+            [server]
+            host = "0.0.0.0"
+            port = 8080
+            request_timeout = 60
+            keep_alive_timeout = 120
+            
+            [database]
+            url = "postgres://localhost/test"
+            max_connections = 20
+            min_connections = 5
+            connection_timeout = 60
+            
+            [logger]
+            level = "debug"
+            
+            [logger.console]
+            enabled = true
+            colored = false
+            
+            [logger.file]
+            enabled = true
+            path = "logs/test.log"
+            append = false
+            format = "compact"
+            
+            [logger.file.rotation]
+            strategy = "time"
+            max_size = 5242880
+            max_files = 10
+            compress = true
+        "#;
+        
+        let settings: Settings = toml::from_str(toml_str).expect("Failed to deserialize");
+        
+        assert_eq!(settings.application.name, "test-app");
+        assert_eq!(settings.application.version, "1.0.0");
+        
+        assert_eq!(settings.server.host, "0.0.0.0");
+        assert_eq!(settings.server.port, 8080);
+        assert_eq!(settings.server.request_timeout, 60);
+        assert_eq!(settings.server.keep_alive_timeout, 120);
+        
+        assert_eq!(settings.database.url, "postgres://localhost/test");
+        assert_eq!(settings.database.max_connections, 20);
+        assert_eq!(settings.database.min_connections, 5);
+        assert_eq!(settings.database.connection_timeout, 60);
+        
+        assert_eq!(settings.logger.level, "debug");
+        assert!(settings.logger.console.enabled);
+        assert!(!settings.logger.console.colored);
+        assert!(settings.logger.file.enabled);
+        assert_eq!(settings.logger.file.path, "logs/test.log");
+        assert!(!settings.logger.file.append);
+        assert_eq!(settings.logger.file.format, "compact");
+        assert_eq!(settings.logger.file.rotation.strategy, "time");
+        assert_eq!(settings.logger.file.rotation.max_size, 5242880);
+        assert_eq!(settings.logger.file.rotation.max_files, 10);
+        assert!(settings.logger.file.rotation.compress);
+    }
+
+    // ========================================================================
+    // LoggerSettings to LoggerConfig conversion tests
+    // ========================================================================
+
+    #[test]
+    fn test_console_settings_into_console_config() {
+        let settings = ConsoleSettings {
+            enabled: true,
+            colored: false,
+        };
+        let config = settings.into_console_config();
+        assert!(config.enabled);
+        assert!(!config.colored);
+    }
+
+    #[test]
+    fn test_rotation_settings_into_rotation_config_size() {
+        let settings = RotationSettings {
+            strategy: "size".to_string(),
+            max_size: 1024 * 1024,
+            max_files: 3,
+            compress: true,
+        };
+        let config = settings.into_rotation_config().expect("Should convert");
+        assert_eq!(config.strategy, RotationStrategy::Size);
+        assert_eq!(config.max_size, 1024 * 1024);
+        assert_eq!(config.max_files, 3);
+        assert!(config.compress);
+    }
+
+    #[test]
+    fn test_rotation_settings_into_rotation_config_time_variants() {
+        // Test "time" defaults to daily
+        let settings = RotationSettings {
+            strategy: "time".to_string(),
+            ..Default::default()
+        };
+        let config = settings.into_rotation_config().expect("Should convert");
+        assert_eq!(
+            config.strategy,
+            RotationStrategy::Time(crate::logger::TimeUnit::Daily)
+        );
+
+        // Test "hourly"
+        let settings = RotationSettings {
+            strategy: "hourly".to_string(),
+            ..Default::default()
+        };
+        let config = settings.into_rotation_config().expect("Should convert");
+        assert_eq!(
+            config.strategy,
+            RotationStrategy::Time(crate::logger::TimeUnit::Hourly)
+        );
+
+        // Test "weekly"
+        let settings = RotationSettings {
+            strategy: "weekly".to_string(),
+            ..Default::default()
+        };
+        let config = settings.into_rotation_config().expect("Should convert");
+        assert_eq!(
+            config.strategy,
+            RotationStrategy::Time(crate::logger::TimeUnit::Weekly)
+        );
+
+        // Test "monthly"
+        let settings = RotationSettings {
+            strategy: "monthly".to_string(),
+            ..Default::default()
+        };
+        let config = settings.into_rotation_config().expect("Should convert");
+        assert_eq!(
+            config.strategy,
+            RotationStrategy::Time(crate::logger::TimeUnit::Monthly)
+        );
+    }
+
+    #[test]
+    fn test_rotation_settings_into_rotation_config_invalid_strategy() {
+        let settings = RotationSettings {
+            strategy: "invalid".to_string(),
+            ..Default::default()
+        };
+        let result = settings.into_rotation_config();
+        assert!(result.is_err());
+        if let Err(ConfigError::ValidationError { field, message }) = result {
+            assert_eq!(field, "logger.file.rotation.strategy");
+            assert!(message.contains("Invalid rotation strategy"));
+        } else {
+            panic!("Expected ValidationError");
+        }
+    }
+
+    #[test]
+    fn test_file_settings_into_file_config() {
+        let settings = FileSettings {
+            enabled: true,
+            path: "logs/test.log".to_string(),
+            append: false,
+            format: "json".to_string(),
+            rotation: RotationSettings::default(),
+        };
+        let config = settings.into_file_config().expect("Should convert");
+        assert!(config.enabled);
+        assert_eq!(config.path, PathBuf::from("logs/test.log"));
+        assert!(!config.append);
+        assert_eq!(config.format, LogFormat::Json);
+    }
+
+    #[test]
+    fn test_file_settings_into_file_config_all_formats() {
+        for (format_str, expected) in [
+            ("full", LogFormat::Full),
+            ("compact", LogFormat::Compact),
+            ("json", LogFormat::Json),
+            ("FULL", LogFormat::Full),     // case insensitive
+            ("Compact", LogFormat::Compact), // case insensitive
+        ] {
+            let settings = FileSettings {
+                format: format_str.to_string(),
+                ..Default::default()
+            };
+            let config = settings.into_file_config().expect("Should convert");
+            assert_eq!(config.format, expected, "Format {} should convert", format_str);
+        }
+    }
+
+    #[test]
+    fn test_file_settings_into_file_config_invalid_format() {
+        let settings = FileSettings {
+            format: "invalid".to_string(),
+            ..Default::default()
+        };
+        let result = settings.into_file_config();
+        assert!(result.is_err());
+        if let Err(ConfigError::ValidationError { field, .. }) = result {
+            assert_eq!(field, "logger.file.format");
+        } else {
+            panic!("Expected ValidationError");
+        }
+    }
+
+    #[test]
+    fn test_logger_settings_into_logger_config() {
+        let settings = LoggerSettings {
+            level: "debug".to_string(),
+            console: ConsoleSettings {
+                enabled: true,
+                colored: true,
+            },
+            file: FileSettings {
+                enabled: false,
+                ..Default::default()
+            },
+        };
+        let config = settings.into_logger_config().expect("Should convert");
+        assert_eq!(config.level, "debug");
+        assert!(config.console.enabled);
+        assert!(config.console.colored);
+        assert!(!config.file.enabled);
+    }
+
+    #[test]
+    fn test_logger_settings_into_logger_config_with_file() {
+        let settings = LoggerSettings {
+            level: "info".to_string(),
+            console: ConsoleSettings {
+                enabled: true,
+                colored: false,
+            },
+            file: FileSettings {
+                enabled: true,
+                path: "logs/app.log".to_string(),
+                append: true,
+                format: "compact".to_string(),
+                rotation: RotationSettings {
+                    strategy: "size".to_string(),
+                    max_size: 5 * 1024 * 1024,
+                    max_files: 10,
+                    compress: true,
+                },
+            },
+        };
+        let config = settings.into_logger_config().expect("Should convert");
+        assert_eq!(config.level, "info");
+        assert!(config.console.enabled);
+        assert!(!config.console.colored);
+        assert!(config.file.enabled);
+        assert_eq!(config.file.path, PathBuf::from("logs/app.log"));
+        assert!(config.file.append);
+        assert_eq!(config.file.format, LogFormat::Compact);
+        assert_eq!(config.file.rotation.strategy, RotationStrategy::Size);
+        assert_eq!(config.file.rotation.max_size, 5 * 1024 * 1024);
+        assert_eq!(config.file.rotation.max_files, 10);
+        assert!(config.file.rotation.compress);
+    }
+
+    #[test]
+    fn test_logger_settings_into_logger_config_invalid_level() {
+        let settings = LoggerSettings {
+            level: "invalid".to_string(),
+            console: ConsoleSettings::default(),
+            file: FileSettings::default(),
+        };
+        let result = settings.into_logger_config();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_logger_settings_into_logger_config_both_disabled() {
+        let settings = LoggerSettings {
+            level: "info".to_string(),
+            console: ConsoleSettings {
+                enabled: false,
+                colored: false,
+            },
+            file: FileSettings {
+                enabled: false,
+                ..Default::default()
+            },
+        };
+        let result = settings.into_logger_config();
+        assert!(result.is_err());
+    }
+}

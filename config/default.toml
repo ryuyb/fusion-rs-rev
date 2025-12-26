@@ -1,0 +1,91 @@
+# =============================================================================
+# Fusion-RS Default Configuration
+# =============================================================================
+# This is the base configuration file. Values here serve as defaults and can be
+# overridden by environment-specific files ({environment}.toml), local.toml,
+# or environment variables prefixed with FUSION_.
+#
+# Configuration priority (highest to lowest):
+#   1. Environment variables (FUSION_*)
+#   2. local.toml (not committed to version control)
+#   3. {environment}.toml (e.g., development.toml, production.toml)
+#   4. default.toml (this file)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Application Configuration
+# -----------------------------------------------------------------------------
+# Basic application metadata used for identification and versioning.
+[application]
+# Application name - used in logs and identification
+name = "fusion-rs"
+# Application version - follows semantic versioning
+version = "0.1.0"
+
+# -----------------------------------------------------------------------------
+# Server Configuration
+# -----------------------------------------------------------------------------
+# Axum HTTP server settings for handling incoming requests.
+[server]
+# Host address to bind the server
+# Use "127.0.0.1" for local-only access, "0.0.0.0" for all interfaces
+host = "127.0.0.1"
+# Port number to listen on (1-65535)
+port = 3000
+# Request timeout in seconds - maximum time to process a request
+request_timeout = 30
+# Keep-alive timeout in seconds - how long to keep idle connections open
+keep_alive_timeout = 75
+
+# -----------------------------------------------------------------------------
+# Database Configuration
+# -----------------------------------------------------------------------------
+# Diesel database connection pool settings.
+[database]
+# Database connection URL (required)
+# Format: postgres://user:password@host:port/database
+# For SQLite: sqlite://./path/to/database.db
+url = ""
+# Maximum number of connections in the pool
+max_connections = 10
+# Minimum number of connections to maintain
+min_connections = 1
+# Connection timeout in seconds
+connection_timeout = 30
+
+# -----------------------------------------------------------------------------
+# Logger Configuration
+# -----------------------------------------------------------------------------
+# Logging system settings compatible with tracing subscriber.
+[logger]
+# Log level: trace, debug, info, warn, error
+level = "info"
+
+# Console output settings
+[logger.console]
+# Enable console logging
+enabled = true
+# Use colored output (ANSI colors)
+colored = true
+
+# File output settings
+[logger.file]
+# Enable file logging
+enabled = false
+# Path to the log file
+path = "logs/app.log"
+# Append to existing file (true) or overwrite (false)
+append = true
+# Log format: full, compact, json
+format = "json"
+
+# Log file rotation settings
+[logger.file.rotation]
+# Rotation strategy: size, count, combined, daily, hourly, weekly, monthly
+strategy = "size"
+# Maximum file size in bytes before rotation (10MB default)
+max_size = 10485760
+# Maximum number of rotated files to keep
+max_files = 5
+# Compress rotated files with gzip
+compress = false

@@ -6,3 +6,6 @@ logs
 proptest-regressions
 
 .idea
+
+# Local configuration (contains sensitive/personal settings)
+config/local.toml

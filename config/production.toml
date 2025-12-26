@@ -1,0 +1,60 @@
+# =============================================================================
+# Fusion-RS Production Environment Configuration
+# =============================================================================
+# Production-specific settings that override default.toml.
+# This file is loaded when FUSION_APP_ENV=production.
+#
+# IMPORTANT: Sensitive values (database credentials, API keys) should be
+# provided via environment variables, not in this file.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Server Configuration
+# -----------------------------------------------------------------------------
+# Production server settings - bind to all interfaces
+[server]
+# Listen on all interfaces for container/cloud deployments
+host = "0.0.0.0"
+# Standard HTTP port (use reverse proxy for HTTPS)
+port = 8080
+# Longer timeout for production workloads
+request_timeout = 60
+keep_alive_timeout = 120
+
+# -----------------------------------------------------------------------------
+# Database Configuration
+# -----------------------------------------------------------------------------
+# Production database - use environment variable FUSION_DATABASE__URL
+[database]
+# Override via FUSION_DATABASE__URL environment variable
+url = ""
+# Higher connection pool for production load
+max_connections = 20
+min_connections = 5
+connection_timeout = 30
+
+# -----------------------------------------------------------------------------
+# Logger Configuration
+# -----------------------------------------------------------------------------
+# Production logging - structured JSON for log aggregation
+[logger]
+level = "info"
+
+[logger.console]
+# Disable console in production (use log aggregation)
+enabled = false
+colored = false
+
+[logger.file]
+enabled = true
+path = "/var/log/fusion/app.log"
+append = true
+# JSON format for structured logging and log aggregation
+format = "json"
+
+[logger.file.rotation]
+# Daily rotation for production logs
+strategy = "daily"
+max_size = 104857600  # 100MB fallback
+max_files = 30        # Keep 30 days of logs
+compress = true       # Compress old logs to save space
