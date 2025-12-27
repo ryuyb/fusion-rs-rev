@@ -50,7 +50,7 @@ async fn list_users(
     State(state): State<AppState>,
     Query(params): Query<PaginationParams>,
 ) -> AppResult<Json<PagedResponse<UserResponse>>> {
-    let params = params.validate();
+    let params = params.normalize();
     let (users, total_count) = state.services.users.list_users_paginated(
         params.offset() as i64,
         params.limit() as i64,

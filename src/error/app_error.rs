@@ -1,6 +1,14 @@
 use crate::error::DatabaseErrorConverter;
 use axum::extract::rejection::FormRejection;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+/// Represents a validation error for a specific field.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValidationFieldError {
+    pub field: String,
+    pub message: String,
+}
 
 /// Application-wide error type that represents all possible errors in the system.
 ///
@@ -28,6 +36,10 @@ pub enum AppError {
     /// Validation error with field-specific details
     #[error("Validation failed for {field}: {reason}")]
     Validation { field: String, reason: String },
+
+    /// Multiple validation errors with field-specific details
+    #[error("Validation failed for multiple fields")]
+    ValidationErrors { errors: Vec<ValidationFieldError> },
 
     /// Bad request error with descriptive message
     #[error("Bad request: {message}")]
@@ -141,7 +153,7 @@ impl From<argon2::password_hash::phc::Error> for AppError {
 
 impl From<validator::ValidationErrors> for AppError {
     fn from(errors: validator::ValidationErrors) -> Self {
-        let messages: Vec<String> = errors
+        let field_errors: Vec<ValidationFieldError> = errors
             .field_errors()
             .iter()
             .flat_map(|(field, errors)| {
@@ -151,13 +163,16 @@ impl From<validator::ValidationErrors> for AppError {
                         .as_ref()
                         .map(|m| m.to_string())
                         .unwrap_or_else(|| format!("{} validation failed", field));
-                    format!("{}: {}", field, message)
+                    ValidationFieldError {
+                        field: field.to_string(),
+                        message,
+                    }
                 })
             })
             .collect();
 
-        AppError::UnprocessableContent {
-            message: messages.join(", "),
+        AppError::ValidationErrors {
+            errors: field_errors,
         }
     }
 }

@@ -50,6 +50,25 @@ impl IntoResponse for AppError {
                 StatusCode::BAD_REQUEST,
                 ErrorResponse::validation_error(field, reason),
             ),
+            AppError::ValidationErrors { errors } => {
+                let details = json!({
+                    "errors": errors.iter().map(|e| json!({
+                        "field": e.field,
+                        "message": e.message
+                    })).collect::<Vec<_>>()
+                });
+
+                let message = if errors.len() == 1 {
+                    format!("Validation failed for {}: {}", errors[0].field, errors[0].message)
+                } else {
+                    format!("Validation failed for {} field(s)", errors.len())
+                };
+
+                (
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    ErrorResponse::new("VALIDATION_ERRORS", &message).with_details(details),
+                )
+            },
             AppError::BadRequest { message } => (
                 StatusCode::BAD_REQUEST,
                 ErrorResponse::new("BAD_REQUEST", message),
@@ -283,6 +302,7 @@ pub fn error_to_status_code(error: &AppError) -> StatusCode {
         AppError::NotFound { .. } => StatusCode::NOT_FOUND,
         AppError::Duplicate { .. } => StatusCode::CONFLICT,
         AppError::Validation { .. } => StatusCode::BAD_REQUEST,
+        AppError::ValidationErrors { .. } => StatusCode::UNPROCESSABLE_ENTITY,
         AppError::BadRequest { .. } => StatusCode::BAD_REQUEST,
         AppError::UnprocessableContent { .. } => StatusCode::UNPROCESSABLE_ENTITY,
         AppError::Unauthorized { .. } => StatusCode::UNAUTHORIZED,
@@ -303,6 +323,7 @@ pub fn error_to_code(error: &AppError) -> &'static str {
         AppError::NotFound { .. } => "NOT_FOUND",
         AppError::Duplicate { .. } => "DUPLICATE_ENTRY",
         AppError::Validation { .. } => "VALIDATION_ERROR",
+        AppError::ValidationErrors { .. } => "VALIDATION_ERRORS",
         AppError::BadRequest { .. } => "BAD_REQUEST",
         AppError::UnprocessableContent { .. } => "UNPROCESSABLE_CONTENT",
         AppError::Unauthorized { .. } => "UNAUTHORIZED",
@@ -451,7 +472,7 @@ mod tests {
         // Test that the global error handler can extract error messages from the original response
         use axum::response::Response;
         use axum::body::Body;
-        
+
         // Create a response with a custom error message in the body
         let custom_error_message = "Custom validation failed";
         let response = Response::builder()
@@ -459,19 +480,90 @@ mod tests {
             .header("content-type", "text/plain")
             .body(Body::from(custom_error_message))
             .unwrap();
-            
+
         // Verify the status code
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-        
+
         // The global_error_handler should extract this message and include it
         // in the ErrorResponse. This test verifies the functionality exists.
-        
+
         // Test with empty body
         let empty_response = Response::builder()
             .status(StatusCode::NOT_FOUND)
             .body(Body::empty())
             .unwrap();
-            
+
         assert_eq!(empty_response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn test_validation_errors_status_code() {
+        use crate::error::ValidationFieldError;
+
+        let error = AppError::ValidationErrors {
+            errors: vec![
+                ValidationFieldError {
+                    field: "email".to_string(),
+                    message: "Invalid email format".to_string(),
+                },
+                ValidationFieldError {
+                    field: "age".to_string(),
+                    message: "Age must be between 18 and 100".to_string(),
+                },
+            ],
+        };
+        assert_eq!(error_to_status_code(&error), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(error_to_code(&error), "VALIDATION_ERRORS");
+    }
+
+    #[tokio::test]
+    async fn test_validation_errors_response_format() {
+        use crate::error::ValidationFieldError;
+        use axum::body::to_bytes;
+
+        let error = AppError::ValidationErrors {
+            errors: vec![
+                ValidationFieldError {
+                    field: "email".to_string(),
+                    message: "Invalid email format".to_string(),
+                },
+                ValidationFieldError {
+                    field: "username".to_string(),
+                    message: "Username must be between 3 and 20 characters".to_string(),
+                },
+            ],
+        };
+
+        let response = error.into_response();
+
+        // Verify status code
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        // Extract and verify body
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let body_str = String::from_utf8(body.to_vec()).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&body_str).unwrap();
+
+        // Verify error response structure
+        assert_eq!(json["code"], "VALIDATION_ERRORS");
+        assert!(json["message"].as_str().unwrap().contains("Validation failed"));
+
+        // Verify details contains errors array
+        let details = &json["details"];
+        assert!(details.is_object());
+
+        let errors = &details["errors"];
+        assert!(errors.is_array());
+
+        let errors_array = errors.as_array().unwrap();
+        assert_eq!(errors_array.len(), 2);
+
+        // Verify first error
+        assert_eq!(errors_array[0]["field"], "email");
+        assert_eq!(errors_array[0]["message"], "Invalid email format");
+
+        // Verify second error
+        assert_eq!(errors_array[1]["field"], "username");
+        assert_eq!(errors_array[1]["message"], "Username must be between 3 and 20 characters");
     }
 }

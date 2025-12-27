@@ -73,11 +73,12 @@ mod tests {
         assert!(result.is_err());
         let error = result.unwrap_err();
         match error {
-            AppError::UnprocessableContent { message } => {
-                assert!(message.contains("username"));
-                assert!(message.contains("between 3 and 20 characters"));
+            AppError::ValidationErrors { errors } => {
+                assert_eq!(errors.len(), 1);
+                assert_eq!(errors[0].field, "username");
+                assert!(errors[0].message.contains("between 3 and 20 characters"));
             }
-            _ => panic!("Expected UnprocessableContent error, got {:?}", error),
+            _ => panic!("Expected ValidationErrors error, got {:?}", error),
         }
     }
 
@@ -96,11 +97,12 @@ mod tests {
         assert!(result.is_err());
         let error = result.unwrap_err();
         match error {
-            AppError::UnprocessableContent { message } => {
-                assert!(message.contains("email"));
-                assert!(message.contains("Invalid email format"));
+            AppError::ValidationErrors { errors } => {
+                assert_eq!(errors.len(), 1);
+                assert_eq!(errors[0].field, "email");
+                assert!(errors[0].message.contains("Invalid email format"));
             }
-            _ => panic!("Expected UnprocessableContent error, got {:?}", error),
+            _ => panic!("Expected ValidationErrors error, got {:?}", error),
         }
     }
 
@@ -119,11 +121,12 @@ mod tests {
         assert!(result.is_err());
         let error = result.unwrap_err();
         match error {
-            AppError::UnprocessableContent { message } => {
-                assert!(message.contains("age"));
-                assert!(message.contains("between 18 and 100"));
+            AppError::ValidationErrors { errors } => {
+                assert_eq!(errors.len(), 1);
+                assert_eq!(errors[0].field, "age");
+                assert!(errors[0].message.contains("between 18 and 100"));
             }
-            _ => panic!("Expected UnprocessableContent error, got {:?}", error),
+            _ => panic!("Expected ValidationErrors error, got {:?}", error),
         }
     }
 
@@ -142,11 +145,15 @@ mod tests {
         assert!(result.is_err());
         let error = result.unwrap_err();
         match error {
-            AppError::UnprocessableContent { message } => {
-                // Should contain errors for multiple fields
-                assert!(message.contains("username") || message.contains("email") || message.contains("age"));
+            AppError::ValidationErrors { errors } => {
+                // Should have errors for all three fields
+                assert_eq!(errors.len(), 3);
+                let fields: Vec<&str> = errors.iter().map(|e| e.field.as_str()).collect();
+                assert!(fields.contains(&"username"));
+                assert!(fields.contains(&"email"));
+                assert!(fields.contains(&"age"));
             }
-            _ => panic!("Expected UnprocessableContent error, got {:?}", error),
+            _ => panic!("Expected ValidationErrors error, got {:?}", error),
         }
     }
 

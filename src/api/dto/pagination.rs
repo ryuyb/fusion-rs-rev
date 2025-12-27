@@ -2,22 +2,30 @@
 
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
+use validator::Validate;
 
 /// Query parameters for pagination.
-#[derive(Debug, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize, IntoParams, Validate)]
 pub struct PaginationParams {
     /// Page number (1-based)
     #[serde(default = "default_page")]
+    #[validate(range(min = 1, message = "Page must be at least 1"))]
+    #[param(minimum = 1, example = 1)]
     pub page: u32,
-    
+
     /// Number of items per page (max 100)
     #[serde(default = "default_page_size")]
+    #[validate(range(min = 1, max = 100, message = "Page size must be between 1 and 100"))]
+    #[param(minimum = 1, maximum = 100, example = 20)]
     pub page_size: u32,
 }
 
 impl PaginationParams {
-    /// Validates and normalizes pagination parameters.
-    pub fn validate(mut self) -> Self {
+    /// Normalizes pagination parameters to safe defaults.
+    ///
+    /// Note: This method is kept for backward compatibility but is now less necessary
+    /// since validation is enforced by the Validate trait with proper error messages.
+    pub fn normalize(mut self) -> Self {
         if self.page == 0 {
             self.page = 1;
         }
