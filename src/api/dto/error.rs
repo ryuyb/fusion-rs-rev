@@ -2,13 +2,17 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use utoipa::ToSchema;
 
 /// Standard error response format with flexible details.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ErrorResponse {
+    #[schema(example = "VALIDATION_ERROR")]
     pub code: String,
+    #[schema(example = "Validation failed for email: invalid format")]
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(example = json!({"errors": {"field": "email", "message": "invalid format"}}))]
     pub details: Option<Value>,
 }
 

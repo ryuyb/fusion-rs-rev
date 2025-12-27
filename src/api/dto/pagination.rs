@@ -68,21 +68,27 @@ pub struct PagedResponse<T> {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct PaginationMeta {
     /// Current page number (1-based)
+    #[schema(example = 1)]
     pub page: u32,
-    
+
     /// Number of items per page
+    #[schema(example = 20)]
     pub page_size: u32,
-    
+
     /// Total number of items across all pages
+    #[schema(example = 100)]
     pub total_items: u64,
-    
+
     /// Total number of pages
+    #[schema(example = 5)]
     pub total_pages: u32,
-    
+
     /// Whether there is a next page
+    #[schema(example = true)]
     pub has_next: bool,
-    
+
     /// Whether there is a previous page
+    #[schema(example = false)]
     pub has_prev: bool,
 }
 

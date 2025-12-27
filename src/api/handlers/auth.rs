@@ -1,109 +1,17 @@
 //! Authentication handlers for login and token management.
 
 use axum::{extract::State, http::StatusCode, Json};
-use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
 use crate::api::doc::AUTH_TAG;
+use crate::api::dto::{
+    LoginRequest, LoginResponse, RefreshTokenRequest, RefreshTokenResponse, RegisterRequest,
+    RegisterResponse,
+};
 use crate::error::AppResult;
 use crate::state::AppState;
 use crate::utils::jwt::{generate_token_pair, validate_refresh_token};
-
-/// Login request payload
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct LoginRequest {
-    /// User's email address
-    #[schema(example = "user@example.com")]
-    pub email: String,
-    /// User's password (plain text)
-    #[schema(example = "password123")]
-    pub password: String,
-}
-
-/// Register request payload
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct RegisterRequest {
-    /// Username (unique)
-    #[schema(example = "john_doe")]
-    pub username: String,
-    /// User's email address (unique)
-    #[schema(example = "user@example.com")]
-    pub email: String,
-    /// User's password (plain text, will be hashed)
-    #[schema(example = "password123")]
-    pub password: String,
-}
-
-/// Refresh token request payload
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct RefreshTokenRequest {
-    /// Refresh token
-    #[schema(example = "eyJ0eXAiOiJKV1QiLCJhbGc...")]
-    pub refresh_token: String,
-}
-
-/// Login response with user info and tokens
-#[derive(Debug, Serialize, ToSchema)]
-pub struct LoginResponse {
-    /// User information
-    pub user: UserInfo,
-    /// Access token (short-lived)
-    #[schema(example = "eyJ0eXAiOiJKV1QiLCJhbGc...")]
-    pub access_token: String,
-    /// Refresh token (long-lived)
-    #[schema(example = "eyJ0eXAiOiJKV1QiLCJhbGc...")]
-    pub refresh_token: String,
-}
-
-/// Register response with user info and tokens
-#[derive(Debug, Serialize, ToSchema)]
-pub struct RegisterResponse {
-    /// User information
-    pub user: UserInfo,
-    /// Access token (short-lived)
-    #[schema(example = "eyJ0eXAiOiJKV1QiLCJhbGc...")]
-    pub access_token: String,
-    /// Refresh token (long-lived)
-    #[schema(example = "eyJ0eXAiOiJKV1QiLCJhbGc...")]
-    pub refresh_token: String,
-}
-
-/// Refresh token response with new tokens
-#[derive(Debug, Serialize, ToSchema)]
-pub struct RefreshTokenResponse {
-    /// New access token (short-lived)
-    #[schema(example = "eyJ0eXAiOiJKV1QiLCJhbGc...")]
-    pub access_token: String,
-    /// New refresh token (long-lived)
-    #[schema(example = "eyJ0eXAiOiJKV1QiLCJhbGc...")]
-    pub refresh_token: String,
-}
-
-/// User information in response
-#[derive(Debug, Serialize, ToSchema)]
-pub struct UserInfo {
-    /// User ID
-    #[schema(example = 1)]
-    pub id: i32,
-    /// Username
-    #[schema(example = "john_doe")]
-    pub username: String,
-    /// Email address
-    #[schema(example = "user@example.com")]
-    pub email: String,
-}
-
-impl From<crate::models::User> for UserInfo {
-    fn from(user: crate::models::User) -> Self {
-        Self {
-            id: user.id,
-            username: user.username,
-            email: user.email,
-        }
-    }
-}
 
 /// Creates the authentication routes
 ///

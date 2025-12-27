@@ -22,6 +22,11 @@ pub const HEALTH_TAG: &str = "Health";
         (name = AUTH_TAG, description = "User authentication endpoints"),
         (name = HEALTH_TAG, description = "Health check and monitoring endpoints")
     ),
+    components(
+        schemas(
+            crate::api::dto::ErrorResponse,
+        )
+    ),
 )]
 pub struct ApiDoc;
 

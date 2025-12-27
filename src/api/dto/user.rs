@@ -13,13 +13,13 @@ use validator::Validate;
 #[derive(Debug, Deserialize, ToSchema, Validate)]
 pub struct CreateUserRequest {
     #[validate(length(min = 3, max = 20, message = "Username must be between 3 and 20 characters"))]
-    #[schema(min_length = 3, max_length = 20)]
+    #[schema(min_length = 3, max_length = 20, example = "john_doe")]
     pub username: String,
     #[validate(email(message = "Invalid email format"))]
-    #[schema(format = "email")]
+    #[schema(format = "email", example = "john@example.com")]
     pub email: String,
     #[validate(length(min = 6, max = 30, message = "Password must be between 6 and 30 characters"))]
-    #[schema(format = "password", min_length = 6, max_length = 30)]
+    #[schema(format = "password", min_length = 6, max_length = 30, example = "password123")]
     pub password: String,
 }
 
@@ -38,11 +38,13 @@ impl CreateUserRequest {
 #[derive(Debug, Deserialize, ToSchema, Validate)]
 pub struct UpdateUserRequest {
     #[validate(length(min = 3, max = 20, message = "Username must be between 3 and 20 characters"))]
+    #[schema(example = "jane_doe")]
     pub username: Option<String>,
     #[validate(email(message = "Invalid email format"))]
-    #[schema(format = "email")]
+    #[schema(format = "email", example = "jane@example.com")]
     pub email: Option<String>,
     #[validate(length(min = 6, max = 30, message = "Password must be between 6 and 30 characters"))]
+    #[schema(format = "password", example = "newpassword123")]
     pub password: Option<String>,
 }
 
@@ -64,10 +66,15 @@ impl UpdateUserRequest {
 /// Response body for user data (excludes sensitive fields like password).
 #[derive(Debug, Serialize, ToSchema)]
 pub struct UserResponse {
+    #[schema(example = 1)]
     pub id: i32,
+    #[schema(example = "john_doe")]
     pub username: String,
+    #[schema(example = "john@example.com")]
     pub email: String,
+    #[schema(example = "2024-01-15T10:30:00.000Z")]
     pub created_at: String,
+    #[schema(example = "2024-01-20T14:45:30.000Z")]
     pub updated_at: String,
 }
 
