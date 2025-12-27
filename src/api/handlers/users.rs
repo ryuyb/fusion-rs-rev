@@ -6,8 +6,9 @@ use crate::api::doc::USER_TAG;
 use crate::api::dto::{CreateUserRequest, PagedResponse, PaginationParams, UpdateUserRequest, UserResponse};
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
+use crate::utils::validate::{ValidatedJson, ValidatedQuery};
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Path, State},
     http::StatusCode,
     Json,
 };
@@ -48,7 +49,7 @@ pub fn user_routes() -> OpenApiRouter<AppState> {
 )]
 async fn list_users(
     State(state): State<AppState>,
-    Query(params): Query<PaginationParams>,
+    ValidatedQuery(params): ValidatedQuery<PaginationParams>,
 ) -> AppResult<Json<PagedResponse<UserResponse>>> {
     let params = params.normalize();
     let (users, total_count) = state.services.users.list_users_paginated(
@@ -107,7 +108,7 @@ async fn get_user(
 )]
 async fn create_user(
     State(state): State<AppState>,
-    Json(payload): Json<CreateUserRequest>,
+    ValidatedJson(payload): ValidatedJson<CreateUserRequest>,
 ) -> AppResult<(StatusCode, Json<UserResponse>)> {
     let new_user = payload.into_new_user();
     let user = state.services.users.create_user(new_user).await?;
@@ -138,7 +139,7 @@ async fn create_user(
 async fn update_user(
     State(state): State<AppState>,
     Path(id): Path<i32>,
-    Json(payload): Json<UpdateUserRequest>,
+    ValidatedJson(payload): ValidatedJson<UpdateUserRequest>,
 ) -> AppResult<Json<UserResponse>> {
     let update_data = payload.into_update_user();
     let user = state.services.users.update_user(id, update_data).await?;

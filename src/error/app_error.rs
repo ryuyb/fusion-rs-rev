@@ -1,5 +1,5 @@
 use crate::error::DatabaseErrorConverter;
-use axum::extract::rejection::FormRejection;
+use axum::extract::rejection::{FormRejection, JsonRejection, QueryRejection};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -179,6 +179,22 @@ impl From<validator::ValidationErrors> for AppError {
 
 impl From<FormRejection> for AppError {
     fn from(value: FormRejection) -> Self {
+        AppError::BadRequest {
+            message: value.to_string(),
+        }
+    }
+}
+
+impl From<JsonRejection> for AppError {
+    fn from(value: JsonRejection) -> Self {
+        AppError::BadRequest {
+            message: value.to_string(),
+        }
+    }
+}
+
+impl From<QueryRejection> for AppError {
+    fn from(value: QueryRejection) -> Self {
         AppError::BadRequest {
             message: value.to_string(),
         }
