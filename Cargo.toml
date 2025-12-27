@@ -13,6 +13,7 @@ diesel_migrations = { version = "2.3" }
 thiserror = "2.0"
 config = { version = "0.15", features = ["toml"] }
 uuid = { version = "1.0", features = ["v4"] }
+validator = { version = "0.20", features = ["derive"] }
 
 # Core logging dependencies
 tracing = "0.1"

@@ -1,4 +1,5 @@
 use crate::error::DatabaseErrorConverter;
+use axum::extract::rejection::FormRejection;
 use thiserror::Error;
 
 /// Application-wide error type that represents all possible errors in the system.
@@ -91,38 +92,33 @@ impl From<crate::config::error::ConfigError> for AppError {
     fn from(error: crate::config::error::ConfigError) -> Self {
         match error {
             crate::config::error::ConfigError::ValidationError { field, message } => {
-                AppError::Validation { field, reason: message }
-            }
-            crate::config::error::ConfigError::FileNotFound(path) => {
-                AppError::Configuration {
-                    key: "config_file".to_string(),
-                    source: anyhow::anyhow!("Configuration file not found: {}", path),
+                AppError::Validation {
+                    field,
+                    reason: message,
                 }
             }
-            crate::config::error::ConfigError::ParseError(msg) => {
-                AppError::Configuration {
-                    key: "config_parse".to_string(),
-                    source: anyhow::anyhow!("Configuration parse error: {}", msg),
-                }
-            }
-            crate::config::error::ConfigError::EnvVarError(msg) => {
-                AppError::Configuration {
-                    key: "environment_variable".to_string(),
-                    source: anyhow::anyhow!("Environment variable error: {}", msg),
-                }
-            }
+            crate::config::error::ConfigError::FileNotFound(path) => AppError::Configuration {
+                key: "config_file".to_string(),
+                source: anyhow::anyhow!("Configuration file not found: {}", path),
+            },
+            crate::config::error::ConfigError::ParseError(msg) => AppError::Configuration {
+                key: "config_parse".to_string(),
+                source: anyhow::anyhow!("Configuration parse error: {}", msg),
+            },
+            crate::config::error::ConfigError::EnvVarError(msg) => AppError::Configuration {
+                key: "environment_variable".to_string(),
+                source: anyhow::anyhow!("Environment variable error: {}", msg),
+            },
             crate::config::error::ConfigError::MutualExclusivityError(msg) => {
                 AppError::Configuration {
                     key: "mutual_exclusivity".to_string(),
                     source: anyhow::anyhow!("Mutual exclusivity error: {}", msg),
                 }
             }
-            crate::config::error::ConfigError::Other(config_err) => {
-                AppError::Configuration {
-                    key: "config_crate".to_string(),
-                    source: anyhow::anyhow!("Config crate error: {}", config_err),
-                }
-            }
+            crate::config::error::ConfigError::Other(config_err) => AppError::Configuration {
+                key: "config_crate".to_string(),
+                source: anyhow::anyhow!("Config crate error: {}", config_err),
+            },
         }
     }
 }
@@ -139,6 +135,37 @@ impl From<argon2::password_hash::phc::Error> for AppError {
     fn from(error: argon2::password_hash::phc::Error) -> Self {
         AppError::Internal {
             source: anyhow::anyhow!("Password hash PHC error: {}", error),
+        }
+    }
+}
+
+impl From<validator::ValidationErrors> for AppError {
+    fn from(errors: validator::ValidationErrors) -> Self {
+        let messages: Vec<String> = errors
+            .field_errors()
+            .iter()
+            .flat_map(|(field, errors)| {
+                errors.iter().map(move |error| {
+                    let message = error
+                        .message
+                        .as_ref()
+                        .map(|m| m.to_string())
+                        .unwrap_or_else(|| format!("{} validation failed", field));
+                    format!("{}: {}", field, message)
+                })
+            })
+            .collect();
+
+        AppError::UnprocessableContent {
+            message: messages.join(", "),
+        }
+    }
+}
+
+impl From<FormRejection> for AppError {
+    fn from(value: FormRejection) -> Self {
+        AppError::BadRequest {
+            message: value.to_string(),
         }
     }
 }

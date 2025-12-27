@@ -1,18 +1,24 @@
 //! User-related DTOs for API requests and responses.
 
+use crate::models::{NewUser, UpdateUser, User};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
-use crate::models::{NewUser, UpdateUser, User};
+use validator::Validate;
 
 // ============================================================================
 // Request DTOs
 // ============================================================================
 
 /// Request body for creating a new user.
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, Validate)]
 pub struct CreateUserRequest {
+    #[validate(length(min = 3, max = 20))]
+    #[schema(examples("user"), min_length = 3, max_length = 20)]
     pub username: String,
+    #[schema(format = "email")]
     pub email: String,
+    #[validate(length(min = 6, max = 30))]
+    #[schema(format = "password", min_length = 6, max_length = 30)]
     pub password: String,
 }
 
@@ -31,6 +37,7 @@ impl CreateUserRequest {
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateUserRequest {
     pub username: Option<String>,
+    #[schema(format = "email")]
     pub email: Option<String>,
     pub password: Option<String>,
 }
