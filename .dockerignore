@@ -48,7 +48,7 @@ tmp/
 temp/
 
 # Docker files
-Dockerfile*
+Dockerfile
 docker-compose*.yml
 .dockerignore
 
@@ -58,3 +58,17 @@ docker-compose*.yml
 
 # Kiro specific
 .kiro/
+
+# Mise
+mise.toml
+
+# Rust test artifacts
+tests/
+benches/
+examples/
+**/*.rs.bk
+
+# Additional CI/CD
+.travis.yml
+.circleci/
+azure-pipelines.yml

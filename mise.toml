@@ -1,0 +1,11 @@
+[tools]
+rust = "nightly"
+
+[tasks.install-diesel]
+description = "Install diesel CLI with PostgreSQL support"
+run = "cargo install diesel_cli --no-default-features --features postgres"
+
+[tasks.migration]
+description = "Generate a new diesel migration"
+run = "diesel migration generate"
+alias = "mig"

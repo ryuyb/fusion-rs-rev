@@ -1,11 +1,16 @@
 # =============================================================================
-# Cross-compile Dockerfile using TARGETARCH for multi-platform builds
-# Supports x86_64 and aarch64 targets using zig for cross-compilation
+# Optimized Multi-arch Dockerfile with Zig cross-compilation
+# Supports: amd64 (x86_64) and arm64 (aarch64) without QEMU
 # =============================================================================
 
+# syntax=docker/dockerfile:1.4
+
+# =============================================================================
+# Stage 1: Builder - Build dependencies and application with Zig
+# =============================================================================
 FROM --platform=$BUILDPLATFORM rust:1.92 AS builder
 
-# Build arguments automatically provided by buildx
+# Build arguments for multi-arch support
 ARG TARGETARCH
 ARG BUILDPLATFORM
 
@@ -17,86 +22,88 @@ RUN rustup target add \
 # Update CA certificates
 RUN update-ca-certificates
 
-# Install Zig for cross-compilation
+# Install Zig for cross-compilation (download appropriate version for build platform)
 ENV ZIGVERSION=0.15.2
-RUN wget https://ziglang.org/download/$ZIGVERSION/zig-x86_64-linux-$ZIGVERSION.tar.xz && \
-    tar -C /usr/local --strip-components=1 -xf zig-x86_64-linux-$ZIGVERSION.tar.xz && \
-    mv /usr/local/zig /usr/local/bin && \
-    rm zig-x86_64-linux-$ZIGVERSION.tar.xz
+RUN case "$(uname -m)" in \
+        "x86_64") \
+            wget https://ziglang.org/download/${ZIGVERSION}/zig-x86_64-linux-${ZIGVERSION}.tar.xz && \
+            tar -C /usr/local -xf zig-x86_64-linux-${ZIGVERSION}.tar.xz && \
+            mv /usr/local/zig-x86_64-linux-${ZIGVERSION} /usr/local/zig ;; \
+        "aarch64") \
+            wget https://ziglang.org/download/${ZIGVERSION}/zig-aarch64-linux-${ZIGVERSION}.tar.xz && \
+            tar -C /usr/local -xf zig-aarch64-linux-${ZIGVERSION}.tar.xz && \
+            mv /usr/local/zig-aarch64-linux-${ZIGVERSION} /usr/local/zig ;; \
+    esac && \
+    ln -s /usr/local/zig/zig /usr/local/bin/zig && \
+    rm -f zig-*.tar.xz
 
 # Install cargo-zigbuild
 RUN cargo install --locked cargo-zigbuild
 
 WORKDIR /app
 
-# Copy dependency files first for better caching
+# Copy Cargo files
 COPY Cargo.toml Cargo.lock ./
 
-# Create dummy main.rs to build dependencies
-RUN mkdir src && echo "fn main() {}" > src/main.rs
+# Create dummy source to build dependencies
+RUN mkdir -p src && \
+    echo "fn main() {}" > src/main.rs
 
-# Build dependencies based on target architecture
-RUN case "$TARGETARCH" in \
-    "amd64") \
-        cargo zigbuild --release --target x86_64-unknown-linux-musl ;; \
-    "arm64") \
-        cargo zigbuild --release --target aarch64-unknown-linux-musl ;; \
-    *) echo "Unsupported architecture: $TARGETARCH" && exit 1 ;; \
-    esac && rm -rf src
+# Build dependencies only with cache mounts
+RUN --mount=type=cache,target=/usr/local/cargo/registry,id=cargo-registry-${TARGETARCH} \
+    --mount=type=cache,target=/usr/local/cargo/git,id=cargo-git-${TARGETARCH} \
+    case "$TARGETARCH" in \
+        "amd64") \
+            cargo zigbuild --release --target x86_64-unknown-linux-musl ;; \
+        "arm64") \
+            cargo zigbuild --release --target aarch64-unknown-linux-musl ;; \
+    esac
 
-# Copy source code
+# Remove dummy source and copy real source code
+RUN rm -rf src
 COPY src ./src
 COPY migrations ./migrations
 COPY config ./config
 COPY diesel.toml ./
+COPY build.rs ./
 
-# Build the application based on target architecture
-RUN case "$TARGETARCH" in \
-    "amd64") \
-        cargo zigbuild --release --target x86_64-unknown-linux-musl --bin fusion-rs && \
-        cp target/x86_64-unknown-linux-musl/release/fusion-rs ./fusion-rs ;; \
-    "arm64") \
-        cargo zigbuild --release --target aarch64-unknown-linux-musl --bin fusion-rs && \
-        cp target/aarch64-unknown-linux-musl/release/fusion-rs ./fusion-rs ;; \
+# Build application with cache mounts
+RUN --mount=type=cache,target=/usr/local/cargo/registry,id=cargo-registry-${TARGETARCH} \
+    --mount=type=cache,target=/usr/local/cargo/git,id=cargo-git-${TARGETARCH} \
+    --mount=type=cache,target=/app/target,id=target-${TARGETARCH} \
+    case "$TARGETARCH" in \
+        "amd64") \
+            cargo zigbuild --release --target x86_64-unknown-linux-musl --bin fusion-rs && \
+            cp target/x86_64-unknown-linux-musl/release/fusion-rs /tmp/fusion-rs ;; \
+        "arm64") \
+            cargo zigbuild --release --target aarch64-unknown-linux-musl --bin fusion-rs && \
+            cp target/aarch64-unknown-linux-musl/release/fusion-rs /tmp/fusion-rs ;; \
     esac
 
+# Strip binary to reduce size
+RUN strip /tmp/fusion-rs
+
 # =============================================================================
-# Runtime Stage - Minimal Debian image
+# Stage 2: Runtime - Minimal distroless image for security and size
 # =============================================================================
-FROM debian:13-slim
-
-# Install runtime dependencies and tools
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    tzdata \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create non-root user
-RUN groupadd -r -g 1001 appgroup && \
-    useradd -r -u 1001 -g appgroup -d /app -s /bin/bash appuser
-
-# Create directories and set permissions
-RUN mkdir -p /app/logs /app/config && \
-    chown -R appuser:appgroup /app
+FROM gcr.io/distroless/cc-debian12:nonroot
 
 WORKDIR /app
 
-# Copy binary and config
-COPY --from=builder /app/fusion-rs ./
-COPY --from=builder /app/config ./config
-RUN chown -R appuser:appgroup /app
+# Copy binary and config from builder
+COPY --from=builder --chown=nonroot:nonroot /tmp/fusion-rs ./fusion-rs
+COPY --from=builder --chown=nonroot:nonroot /app/config ./config
 
-USER appuser
-
+# Expose application port
 EXPOSE 8080
 
-# Health check using curl
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
-
+# Environment variables
 ENV RUST_LOG=info
 ENV FUSION_SERVER__HOST=0.0.0.0
 ENV FUSION_SERVER__PORT=8080
 
-CMD ["/app/fusion-rs"]
+# Use nonroot user (uid=65532)
+USER nonroot
+
+# Run the application
+ENTRYPOINT ["/app/fusion-rs"]
