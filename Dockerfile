@@ -93,7 +93,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,id=cargo-registry-${TARG
 # =============================================================================
 # Stage 2: Runtime - Minimal distroless image for security and size
 # =============================================================================
-FROM gcr.io/distroless/cc-debian12:nonroot
+FROM gcr.io/distroless/cc-debian13:nonroot
 
 WORKDIR /app
 
