@@ -8,11 +8,21 @@
 # =============================================================================
 # Stage 1: Builder - Build dependencies and application with Zig
 # =============================================================================
-FROM --platform=$BUILDPLATFORM rust:1.92 AS builder
+FROM --platform=$BUILDPLATFORM rust:1.92-slim AS builder
 
 # Build arguments for multi-arch support
 ARG TARGETARCH
 ARG BUILDPLATFORM
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    xz-utils \
+    pkg-config \
+    libssl-dev \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
 # Add Rust targets for cross-compilation
 RUN rustup target add \
@@ -27,7 +37,7 @@ ENV ZIGVERSION=0.15.2
 RUN case "$(uname -m)" in \
         "x86_64") \
             wget https://ziglang.org/download/${ZIGVERSION}/zig-x86_64-linux-${ZIGVERSION}.tar.xz && \
-            tar -C /usr/local -xf zig-x86_64-linux-${ZIGVERSION}.tar.xz && \
+            tar -C /usr/local --strip-components=1 -xf zig-x86_64-linux-${ZIGVERSION}.tar.xz && \
             mv /usr/local/zig-x86_64-linux-${ZIGVERSION} /usr/local/zig ;; \
         "aarch64") \
             wget https://ziglang.org/download/${ZIGVERSION}/zig-aarch64-linux-${ZIGVERSION}.tar.xz && \

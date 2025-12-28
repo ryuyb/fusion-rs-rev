@@ -41,6 +41,10 @@ utoipa-swagger-ui = { version = "9", features = ["axum"] }
 clap = { version = "4.5", features = ["derive", "env"] }
 shadow-rs = { version = "1.5", default-features = false }
 
+# Static linking for PostgreSQL and OpenSSL
+pq-sys = { version = "0.7", features = ["bundled"] }
+openssl-sys = { version = "0.9", features = ["vendored"] }
+
 [build-dependencies]
 shadow-rs = "1.5"
 
