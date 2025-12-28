@@ -86,9 +86,11 @@ impl IntoResponse for AppError {
                 ErrorResponse::new("FORBIDDEN", message),
             ),
             AppError::Database { operation, source } => {
-                // Log 500 error with full details
+                // Log 500 error with full details including error chain
+                // Note: Set RUST_BACKTRACE=1 or RUST_LIB_BACKTRACE=1 to capture backtraces
                 tracing::error!(
-                    error = %source,
+                    error = ?source,
+                    error_display = %source,
                     operation = %operation,
                     "Database error occurred"
                 );
@@ -103,9 +105,11 @@ impl IntoResponse for AppError {
                 )
             },
             AppError::Configuration { key, source } => {
-                // Log 500 error with full details
+                // Log 500 error with full details including error chain
+                // Note: Set RUST_BACKTRACE=1 or RUST_LIB_BACKTRACE=1 to capture backtraces
                 tracing::error!(
-                    error = %source,
+                    error = ?source,
+                    error_display = %source,
                     key = %key,
                     "Configuration error occurred"
                 );
@@ -120,9 +124,11 @@ impl IntoResponse for AppError {
                 )
             },
             AppError::ConnectionPool { source } => {
-                // Log connection pool error
+                // Log connection pool error with full details including error chain
+                // Note: Set RUST_BACKTRACE=1 or RUST_LIB_BACKTRACE=1 to capture backtraces
                 tracing::error!(
-                    error = %source,
+                    error = ?source,
+                    error_display = %source,
                     "Connection pool error occurred"
                 );
                 (
@@ -134,9 +140,11 @@ impl IntoResponse for AppError {
                 )
             },
             AppError::Internal { source } => {
-                // Log 500 error with full details
+                // Log 500 error with full details including error chain
+                // Note: Set RUST_BACKTRACE=1 or RUST_LIB_BACKTRACE=1 to capture backtraces
                 tracing::error!(
-                    error = %source,
+                    error = ?source,
+                    error_display = %source,
                     "Internal error occurred"
                 );
                 (
@@ -239,7 +247,8 @@ pub async fn global_error_handler(
                 ErrorResponse::new("PAYLOAD_TOO_LARGE", &message)
             },
             StatusCode::INTERNAL_SERVER_ERROR => {
-                // Log 500 errors
+                // Log 500 errors with original message
+                // Note: For errors with backtrace support, set RUST_BACKTRACE=1 or RUST_LIB_BACKTRACE=1
                 tracing::error!(
                     status = %status,
                     original_message = %original_message,
