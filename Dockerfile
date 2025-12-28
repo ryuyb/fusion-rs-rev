@@ -90,9 +90,6 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,id=cargo-registry-${TARG
             cp target/aarch64-unknown-linux-musl/release/fusion-rs /tmp/fusion-rs ;; \
     esac
 
-# Strip binary to reduce size
-RUN strip /tmp/fusion-rs
-
 # =============================================================================
 # Stage 2: Runtime - Minimal distroless image for security and size
 # =============================================================================

@@ -1,16 +1,16 @@
-name: Build and Push Multi-Arch Docker Image
+name: Build and Push Multi-Arch Docker Image (Zig Cross-Compilation)
 
 on:
-  push:
-    branches:
-      - main
-      - develop
-    tags:
-      - 'v*'
-  pull_request:
-    branches:
-      - main
-      - develop
+#  push:
+#    branches:
+#      - main
+#      - develop
+#    tags:
+#      - 'v*'
+#  pull_request:
+#    branches:
+#      - main
+#      - develop
   workflow_dispatch:
 
 env:
@@ -30,14 +30,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Set up QEMU for multi-platform builds (only for emulation if needed)
-      # Note: We minimize QEMU usage by using cross-compilation
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
       # Set up Docker Buildx with BuildKit
+      # Note: Using Zig for cross-compilation (no QEMU needed)
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
