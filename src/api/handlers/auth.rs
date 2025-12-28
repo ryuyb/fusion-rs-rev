@@ -12,6 +12,7 @@ use crate::api::dto::{
 use crate::error::AppResult;
 use crate::state::AppState;
 use crate::utils::jwt::{generate_token_pair, validate_refresh_token};
+use crate::utils::validate::ValidatedJson;
 
 /// Creates the authentication routes
 ///
@@ -41,7 +42,7 @@ pub fn auth_routes() -> OpenApiRouter<AppState> {
 )]
 async fn login(
     State(state): State<AppState>,
-    Json(payload): Json<LoginRequest>,
+    ValidatedJson(payload): ValidatedJson<LoginRequest>,
 ) -> AppResult<(StatusCode, Json<LoginResponse>)> {
     // Authenticate user and generate tokens using JWT config from state
     let (user, access_token, refresh_token) = state
@@ -81,7 +82,7 @@ async fn login(
 )]
 async fn register(
     State(state): State<AppState>,
-    Json(payload): Json<RegisterRequest>,
+    ValidatedJson(payload): ValidatedJson<RegisterRequest>,
 ) -> AppResult<(StatusCode, Json<RegisterResponse>)> {
     // Create new user (password will be hashed automatically by the service)
     let new_user = crate::models::NewUser {
@@ -126,7 +127,7 @@ async fn register(
 )]
 async fn refresh_token(
     State(state): State<AppState>,
-    Json(payload): Json<RefreshTokenRequest>,
+    ValidatedJson(payload): ValidatedJson<RefreshTokenRequest>,
 ) -> AppResult<Json<RefreshTokenResponse>> {
     // Validate the refresh token
     let claims = validate_refresh_token(&payload.refresh_token, &state.jwt_config.secret)?;

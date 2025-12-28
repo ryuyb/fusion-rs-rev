@@ -1,22 +1,8 @@
-mod api;
-pub mod cli;
-mod config;
-mod db;
-mod error;
-mod logger;
-mod models;
-mod repositories;
-mod schema;
-mod server;
-mod services;
-mod state;
-mod utils;
+use fusion_rs::cli;
+use fusion_rs::server::Server;
 
-pub use state::AppState;
-
-use cli::Cli;
 use clap::Parser;
-use server::Server;
+use fusion_rs::cli::Cli;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
