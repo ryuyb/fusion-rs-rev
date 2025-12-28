@@ -90,6 +90,21 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,id=cargo-registry-${TARG
             cp target/aarch64-unknown-linux-musl/release/fusion-rs /tmp/fusion-rs ;; \
     esac
 
+# Download static curl for healthcheck
+ENV CURLVERSION=8.11.0
+RUN case "$TARGETARCH" in \
+        "amd64") \
+            wget -O /tmp/curl https://github.com/moparisthebest/static-curl/releases/download/v${CURLVERSION}/curl-amd64 && \
+            chmod +x /tmp/curl ;; \
+        "arm64") \
+            wget -O /tmp/curl https://github.com/moparisthebest/static-curl/releases/download/v${CURLVERSION}/curl-aarch64 && \
+            chmod +x /tmp/curl ;; \
+    esac
+
+# Copy healthcheck script
+COPY scripts/healthcheck.sh /tmp/healthcheck.sh
+RUN chmod +x /tmp/healthcheck.sh
+
 # =============================================================================
 # Stage 2: Runtime - Minimal distroless image for security and size
 # =============================================================================
@@ -97,9 +112,11 @@ FROM gcr.io/distroless/cc-debian13:nonroot
 
 WORKDIR /app
 
-# Copy binary and config from builder
+# Copy binary, config, and healthcheck tools from builder
 COPY --from=builder --chown=nonroot:nonroot /tmp/fusion-rs ./fusion-rs
 COPY --from=builder --chown=nonroot:nonroot /app/config ./config
+COPY --from=builder --chown=nonroot:nonroot /tmp/curl /usr/local/bin/curl
+COPY --from=builder --chown=nonroot:nonroot /tmp/healthcheck.sh /usr/local/bin/healthcheck.sh
 
 # Expose application port
 EXPOSE 8080
@@ -108,6 +125,12 @@ EXPOSE 8080
 ENV RUST_LOG=info
 ENV FUSION_SERVER__HOST=0.0.0.0
 ENV FUSION_SERVER__PORT=8080
+
+# Health check configuration
+# Uses /health/live endpoint for liveness probe
+# Checks every 30s with 5s timeout, starts after 10s, allows 3 retries
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD ["/usr/local/bin/healthcheck.sh", "/health/live"]
 
 # Use nonroot user (uid=65532)
 USER nonroot
