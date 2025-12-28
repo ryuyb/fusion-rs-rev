@@ -37,7 +37,7 @@ ENV ZIGVERSION=0.15.2
 RUN case "$(uname -m)" in \
         "x86_64") \
             wget https://ziglang.org/download/${ZIGVERSION}/zig-x86_64-linux-${ZIGVERSION}.tar.xz && \
-            tar -C /usr/local --strip-components=1 -xf zig-x86_64-linux-${ZIGVERSION}.tar.xz && \
+            tar -C /usr/local -xf zig-x86_64-linux-${ZIGVERSION}.tar.xz && \
             mv /usr/local/zig-x86_64-linux-${ZIGVERSION} /usr/local/zig ;; \
         "aarch64") \
             wget https://ziglang.org/download/${ZIGVERSION}/zig-aarch64-linux-${ZIGVERSION}.tar.xz && \
