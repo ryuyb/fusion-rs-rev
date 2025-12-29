@@ -15,5 +15,7 @@ pub mod server;
 pub mod services;
 pub mod state;
 pub mod utils;
+pub mod external;
+pub mod jobs;
 
 pub use state::AppState;
