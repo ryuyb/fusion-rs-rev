@@ -31,6 +31,7 @@ jobs:
       contents: read
       packages: write
       id-token: write
+      attestations: write  # Needed to generate an artifact attestation for a build
 
     steps:
       # Checkout repository
@@ -60,40 +61,80 @@ jobs:
         run: |
           platform=${{ matrix.platform }}
           echo "pair=${platform//\//-}" >> $GITHUB_OUTPUT
+          # Normalize architecture for file naming
+          echo "NORMALIZED_ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
 
-      # Build and push by digest (no tags yet)
-      - name: Build and push Docker image by digest (${{ matrix.platform }})
-        id: build
-        uses: docker/build-push-action@v6
+      # Determine source version for metadata
+      - name: Determine source version
+        id: version
+        run: |
+          GIT_EXACT_TAG="$(git describe --tags --abbrev=0 --exact-match 2>/dev/null || true)"
+          if [[ -n "${GIT_EXACT_TAG}" ]]; then
+            echo "SOURCE_VERSION=${GIT_EXACT_TAG}" >> $GITHUB_ENV
+          else
+            GIT_LAST_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")"
+            echo "SOURCE_VERSION=${GIT_LAST_TAG}-${GITHUB_SHA:0:8}" >> $GITHUB_ENV
+          fi
+
+      # Build using docker bake with multiple outputs (image + local binary)
+      - name: Build and export (${{ matrix.platform }})
+        id: bake
+        uses: docker/bake-action@v6
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+          SOURCE_VERSION: ${{ env.SOURCE_VERSION }}
+          SOURCE_REPOSITORY_URL: https://github.com/${{ github.repository }}
         with:
-          context: .
-          file: ./Dockerfile
-          platforms: ${{ matrix.platform }}
-          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
-          # Use GitHub Actions cache for maximum performance
-          cache-from: type=gha,scope=${{ github.ref_name }}-${{ steps.platform.outputs.pair }}
-          cache-to: type=gha,mode=max,scope=${{ github.ref_name }}-${{ steps.platform.outputs.pair }}
-          # Build arguments
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
+          pull: true
+          files: docker-bake.hcl
+          targets: multi
+          set: |
+            *.cache-from=type=gha,scope=${{ github.ref_name }}-${{ steps.platform.outputs.pair }}
+            *.cache-to=type=gha,mode=max,scope=${{ github.ref_name }}-${{ steps.platform.outputs.pair }}
+            *.platform=${{ matrix.platform }}
+            *.output=type=local,dest=./output
+            *.output=type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
 
-      # Export digest
+      # Extract digest from bake output
       - name: Export digest
         if: github.event_name != 'pull_request'
+        env:
+          BAKE_METADATA: ${{ steps.bake.outputs.metadata }}
         run: |
           mkdir -p /tmp/digests
-          digest="${{ steps.build.outputs.digest }}"
+          digest="$(jq -r '.multi."containerimage.digest"' <<< "${BAKE_METADATA}")"
           touch "/tmp/digests/${digest#sha256:}"
 
       # Upload digest as artifact
       - name: Upload digest
         if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: digests-${{ matrix.arch }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
+
+      # Rename binary to match target platform
+      - name: Rename binary to match target platform
+        env:
+          NORMALIZED_ARCH: ${{ env.NORMALIZED_ARCH }}
+        run: |
+          mv ./output/app/fusion-rs fusion-rs-"${NORMALIZED_ARCH}"
+
+      # Upload artifacts to Github Actions and Attest the binaries
+      - name: Attest binaries
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: fusion-rs-${{ env.NORMALIZED_ARCH }}
+
+      - name: Upload binaries as artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: fusion-rs-${{ env.SOURCE_VERSION }}-linux-${{ env.NORMALIZED_ARCH }}
+          path: fusion-rs-${{ env.NORMALIZED_ARCH }}
+          if-no-files-found: error
+          retention-days: 7
 
   merge-manifests:
     runs-on: ubuntu-latest
@@ -111,7 +152,7 @@ jobs:
 
       # Download all digests
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: /tmp/digests
           pattern: digests-*
