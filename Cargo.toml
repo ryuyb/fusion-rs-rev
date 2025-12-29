@@ -19,6 +19,7 @@ uuid = { version = "1.0", features = ["v4"] }
 validator = { version = "0.20", features = ["derive"] }
 
 reqwest = { version = "0.13.0-rc", features = ["rustls", "stream", "json", "deflate", "gzip", "brotli", "zstd", "socks", "cookies", "charset", "http2", "system-proxy"], default-features = false}
+rand = "0.9"
 
 # Core logging dependencies
 tracing = "0.1"

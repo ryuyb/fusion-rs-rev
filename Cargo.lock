@@ -1003,6 +1003,7 @@ dependencies = [
  "openssl-sys",
  "pq-sys",
  "proptest",
+ "rand",
  "regex",
  "reqwest",
  "serde",
