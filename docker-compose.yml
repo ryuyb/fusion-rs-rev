@@ -1,0 +1,67 @@
+services:
+  # -----------------------------------------------------------------------------
+  # PostgreSQL Database Service
+  # -----------------------------------------------------------------------------
+  postgres:
+    image: postgres:18
+    container_name: fusion-postgres
+    restart: unless-stopped
+    environment:
+      # 默认配置与 config/development.toml 中的数据库 URL 一致
+      # postgres://postgres:postgres@localhost/fusion
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: fusion
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+#    ports:
+#      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      # 可选：如果需要自定义初始化脚本，取消下面注释
+      # - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fusion-network
+
+  # -----------------------------------------------------------------------------
+  # Fusion-RS Application Service
+  # -----------------------------------------------------------------------------
+  fusion-rs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fusion-rs-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # 应用环境
+      FUSION_APP_ENV: development
+      # 数据库配置 - 连接到容器内的 postgres 服务
+      FUSION_DATABASE__URL: postgres://postgres:postgres@postgres:5432/fusion
+      FUSION_DATABASE__AUTO_MIGRATE: "true"
+      # 服务器配置
+      FUSION_SERVER__HOST: 0.0.0.0
+      FUSION_SERVER__PORT: 8080
+      # 日志配置
+      RUST_LOG: info
+    ports:
+      - "8080:8080"
+    networks:
+      - fusion-network
+    # 可选：挂载配置文件以便本地开发时修改
+    # volumes:
+    #   - ./config:/app/config:ro
+
+networks:
+  fusion-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
