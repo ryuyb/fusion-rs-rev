@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
 use crate::state::AppState;
-use crate::utils::jwt::{validate_access_token, Claims};
+use crate::utils::jwt::{Claims, validate_access_token};
 
 /// Extension type for authenticated user information
 ///
@@ -130,7 +130,7 @@ pub async fn optional_auth_middleware(
 mod tests {
     use super::*;
     use crate::config::JwtConfig;
-    use crate::utils::jwt::{generate_access_token, TokenType};
+    use crate::utils::jwt::{TokenType, generate_access_token};
 
     fn create_test_jwt_config() -> JwtConfig {
         JwtConfig {

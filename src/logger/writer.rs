@@ -60,7 +60,9 @@ impl RotatingFileWriter {
 
         let file = open_log_file(&config.path, config.append)?;
         let current_size = if config.append {
-            std::fs::metadata(&config.path).map(|m| m.len()).unwrap_or(0)
+            std::fs::metadata(&config.path)
+                .map(|m| m.len())
+                .unwrap_or(0)
         } else {
             0
         };
@@ -88,10 +90,7 @@ impl RotatingFileWriter {
 
     /// Check if the writer is currently in fallback mode
     pub fn is_in_fallback_mode(&self) -> bool {
-        self.state
-            .lock()
-            .map(|s| s.fallback_mode)
-            .unwrap_or(false)
+        self.state.lock().map(|s| s.fallback_mode).unwrap_or(false)
     }
 
     /// Attempt to recover from fallback mode by reopening the file
@@ -136,9 +135,10 @@ pub struct RotatingWriterGuard {
 
 impl Write for RotatingWriterGuard {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let mut state = self.state.lock().map_err(|_| {
-            io::Error::new(io::ErrorKind::Other, "Failed to acquire writer lock")
-        })?;
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| io::Error::new(io::ErrorKind::Other, "Failed to acquire writer lock"))?;
 
         // If in fallback mode, write to stderr instead
         if state.fallback_mode {
@@ -183,9 +183,10 @@ impl Write for RotatingWriterGuard {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        let mut state = self.state.lock().map_err(|_| {
-            io::Error::new(io::ErrorKind::Other, "Failed to acquire writer lock")
-        })?;
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| io::Error::new(io::ErrorKind::Other, "Failed to acquire writer lock"))?;
 
         if state.fallback_mode {
             return io::stderr().flush();
@@ -221,9 +222,8 @@ impl RotatingWriterGuard {
                         // Try to reopen and write again
                         if let Ok(file) = open_log_file(&self.path, true) {
                             state.file = file;
-                            state.current_size = std::fs::metadata(&self.path)
-                                .map(|m| m.len())
-                                .unwrap_or(0);
+                            state.current_size =
+                                std::fs::metadata(&self.path).map(|m| m.len()).unwrap_or(0);
 
                             // Retry the write
                             match state.file.write(buf) {
@@ -267,7 +267,7 @@ impl RotatingWriterGuard {
     }
 
     /// Check if an error indicates disk space exhaustion
-    /// 
+    ///
     /// Uses both error kind matching and OS-specific error codes for reliability.
     #[cfg(unix)]
     fn is_disk_space_error(error: &io::Error) -> bool {

@@ -4,12 +4,12 @@
 //! and load balancer health checks. Health checks directly access
 //! the database connection pool for efficient connectivity testing.
 
+use crate::api::doc::HEALTH_TAG;
 use crate::state::AppState;
-use axum::{extract::State, http::StatusCode, response::Json, routing::get, Router};
+use axum::{Router, extract::State, http::StatusCode, response::Json, routing::get};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use utoipa::ToSchema;
-use crate::api::doc::HEALTH_TAG;
 
 /// Health check response structure.
 ///
@@ -96,7 +96,9 @@ pub fn health_routes() -> Router<AppState> {
     ),
     tag = HEALTH_TAG
 )]
-pub async fn health_check(State(state): State<AppState>) -> Result<Json<HealthResponse>, StatusCode> {
+pub async fn health_check(
+    State(state): State<AppState>,
+) -> Result<Json<HealthResponse>, StatusCode> {
     let mut checks = HashMap::new();
     let mut overall_status = HealthStatus::Healthy;
 
@@ -104,7 +106,9 @@ pub async fn health_check(State(state): State<AppState>) -> Result<Json<HealthRe
     let db_check = check_database(&state).await;
     if matches!(db_check.status, HealthStatus::Unhealthy) {
         overall_status = HealthStatus::Unhealthy;
-    } else if matches!(db_check.status, HealthStatus::Degraded) && matches!(overall_status, HealthStatus::Healthy) {
+    } else if matches!(db_check.status, HealthStatus::Degraded)
+        && matches!(overall_status, HealthStatus::Healthy)
+    {
         overall_status = HealthStatus::Degraded;
     }
     checks.insert("database".to_string(), db_check);
@@ -143,7 +147,7 @@ pub async fn health_check(State(state): State<AppState>) -> Result<Json<HealthRe
 pub async fn readiness_check(State(state): State<AppState>) -> StatusCode {
     // Check if database is accessible
     let db_check = check_database(&state).await;
-    
+
     match db_check.status {
         HealthStatus::Healthy => StatusCode::OK,
         HealthStatus::Degraded | HealthStatus::Unhealthy => StatusCode::SERVICE_UNAVAILABLE,
@@ -176,13 +180,13 @@ pub async fn liveness_check() -> StatusCode {
 /// connection pool to provide a more accurate health check.
 async fn check_database(state: &AppState) -> ComponentHealth {
     let start_time = std::time::Instant::now();
-    
+
     // Try to get a connection from the pool
     match state.db_pool.get().await {
         Ok(mut conn) => {
             // Try a simple query to verify the connection works
             use diesel_async::RunQueryDsl;
-            
+
             match diesel::sql_query("SELECT 1").execute(&mut conn).await {
                 Ok(_) => ComponentHealth {
                     status: HealthStatus::Healthy,
@@ -222,7 +226,7 @@ mod tests {
             message: Some("All good".to_string()),
             response_time_ms: Some(10),
         };
-        
+
         assert!(matches!(health.status, HealthStatus::Healthy));
         assert_eq!(health.message, Some("All good".to_string()));
         assert_eq!(health.response_time_ms, Some(10));
@@ -237,11 +241,14 @@ mod tests {
     #[test]
     fn test_health_response_creation() {
         let mut checks = HashMap::new();
-        checks.insert("test".to_string(), ComponentHealth {
-            status: HealthStatus::Healthy,
-            message: Some("OK".to_string()),
-            response_time_ms: Some(5),
-        });
+        checks.insert(
+            "test".to_string(),
+            ComponentHealth {
+                status: HealthStatus::Healthy,
+                message: Some("OK".to_string()),
+                response_time_ms: Some(5),
+            },
+        );
 
         let response = HealthResponse {
             status: HealthStatus::Healthy,
@@ -272,6 +279,12 @@ mod tests {
 
         assert!(matches!(healthy_db.status, HealthStatus::Healthy));
         assert!(matches!(unhealthy_db.status, HealthStatus::Unhealthy));
-        assert!(unhealthy_db.message.as_ref().unwrap().contains("Connection failed"));
+        assert!(
+            unhealthy_db
+                .message
+                .as_ref()
+                .unwrap()
+                .contains("Connection failed")
+        );
     }
 }

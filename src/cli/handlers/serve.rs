@@ -40,15 +40,15 @@ impl ServeCommandHandler {
     pub async fn validate_only(&self) -> AppResult<()> {
         // Validate configuration
         self.validate_configuration()?;
-        
+
         println!("✓ Configuration is valid");
         println!("✓ Server would bind to: {}", self.config.server.address());
         println!("✓ Database URL is configured");
         println!("✓ Logger configuration is valid");
-        
+
         // Additional validation checks
         self.validate_server_configuration()?;
-        
+
         println!("Dry run completed successfully - configuration is ready for deployment");
         Ok(())
     }
@@ -92,7 +92,7 @@ mod tests {
     async fn test_serve_handler_dry_run() {
         let config = create_valid_config();
         let handler = ServeCommandHandler::new(config);
-        
+
         let result = handler.execute(true).await;
         assert!(result.is_ok());
     }
@@ -102,7 +102,7 @@ mod tests {
         let mut config = create_valid_config();
         config.server.port = 0; // Invalid port
         let handler = ServeCommandHandler::new(config);
-        
+
         let result = handler.execute(true).await;
         assert!(result.is_err());
     }

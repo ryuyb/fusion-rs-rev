@@ -6,8 +6,8 @@
 use crate::error::{AppError, AppResult};
 use crate::models::{NewUser, UpdateUser, User};
 use crate::repositories::UserRepository;
-use crate::utils::password::{hash_password, verify_password};
 use crate::utils::jwt::generate_token_pair;
+use crate::utils::password::{hash_password, verify_password};
 
 /// User service for handling user-related business logic.
 ///
@@ -49,14 +49,11 @@ impl UserService {
     /// # Returns
     /// The user if found, or `NotFound` error
     pub async fn get_user(&self, id: i32) -> AppResult<User> {
-        self.repo
-            .find_by_id(id)
-            .await?
-            .ok_or(AppError::NotFound {
-                entity: "user".to_string(),
-                field: "id".to_string(),
-                value: id.to_string(),
-            })
+        self.repo.find_by_id(id).await?.ok_or(AppError::NotFound {
+            entity: "user".to_string(),
+            field: "id".to_string(),
+            value: id.to_string(),
+        })
     }
 
     /// Gets a user by their email address.
@@ -86,7 +83,11 @@ impl UserService {
     ///
     /// # Returns
     /// A tuple of (users, total_count)
-    pub async fn list_users_paginated(&self, offset: i64, limit: i64) -> AppResult<(Vec<User>, i64)> {
+    pub async fn list_users_paginated(
+        &self,
+        offset: i64,
+        limit: i64,
+    ) -> AppResult<(Vec<User>, i64)> {
         self.repo.list_paginated(offset, limit).await
     }
 
@@ -104,12 +105,12 @@ impl UserService {
     pub async fn update_user(&self, id: i32, mut update_data: UpdateUser) -> AppResult<User> {
         // Verify user exists first
         self.get_user(id).await?;
-        
+
         // Hash the password if it's being updated
         if let Some(password) = update_data.password {
             update_data.password = Some(hash_password(&password)?);
         }
-        
+
         self.repo.update(id, update_data).await
     }
 
@@ -161,12 +162,12 @@ impl UserService {
         access_expiration_hours: i64,
         refresh_expiration_hours: i64,
     ) -> AppResult<(User, String, String)> {
-        let user = self
-            .verify_credentials(email, password)
-            .await?
-            .ok_or(AppError::Unauthorized {
-                message: "Invalid email or password".to_string(),
-            })?;
+        let user =
+            self.verify_credentials(email, password)
+                .await?
+                .ok_or(AppError::Unauthorized {
+                    message: "Invalid email or password".to_string(),
+                })?;
 
         let (access_token, refresh_token) = generate_token_pair(
             user.id,

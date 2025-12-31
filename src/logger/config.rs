@@ -1,8 +1,8 @@
 //! Configuration types for the advanced logger
 
-use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
 use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use tracing::Level;
 
 /// Main logger configuration
@@ -30,20 +30,20 @@ impl LoggerConfig {
         // Validate log level
         self.parse_level()
             .with_context(|| format!("Invalid log level: {}", self.level))?;
-        
+
         // Validate console config
-        self.console.validate()
+        self.console
+            .validate()
             .context("Invalid console configuration")?;
-        
+
         // Validate file config
-        self.file.validate()
-            .context("Invalid file configuration")?;
-        
+        self.file.validate().context("Invalid file configuration")?;
+
         // Ensure at least one output is enabled
         if !self.console.enabled && !self.file.enabled {
             anyhow::bail!("At least one output (console or file) must be enabled");
         }
-        
+
         Ok(())
     }
 
@@ -55,7 +55,10 @@ impl LoggerConfig {
             "info" => Ok(Level::INFO),
             "warn" => Ok(Level::WARN),
             "error" => Ok(Level::ERROR),
-            _ => anyhow::bail!("Invalid log level '{}'. Valid levels are: trace, debug, info, warn, error", self.level),
+            _ => anyhow::bail!(
+                "Invalid log level '{}'. Valid levels are: trace, debug, info, warn, error",
+                self.level
+            ),
         }
     }
 
@@ -161,7 +164,7 @@ impl FileConfig {
     }
 
     /// Validate file configuration
-    /// 
+    ///
     /// Note: This is a pure validation function that does not create directories.
     /// Directory creation is handled by the writer during initialization.
     pub fn validate(&self) -> Result<()> {
@@ -172,7 +175,8 @@ impl FileConfig {
             }
 
             // Validate rotation config
-            self.rotation.validate()
+            self.rotation
+                .validate()
                 .context("Invalid rotation configuration")?;
         }
         Ok(())
@@ -243,7 +247,10 @@ impl std::str::FromStr for LogFormat {
             "full" => Ok(LogFormat::Full),
             "compact" => Ok(LogFormat::Compact),
             "json" => Ok(LogFormat::Json),
-            _ => anyhow::bail!("Invalid log format '{}'. Valid formats are: full, compact, json", s),
+            _ => anyhow::bail!(
+                "Invalid log format '{}'. Valid formats are: full, compact, json",
+                s
+            ),
         }
     }
 }
@@ -263,7 +270,7 @@ impl LogFormat {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RotationConfig {
     pub strategy: RotationStrategy,
-    pub max_size: u64,      // in bytes
+    pub max_size: u64, // in bytes
     pub max_files: usize,
     pub compress: bool,
 }
@@ -291,14 +298,14 @@ impl RotationConfig {
         if self.max_size == 0 {
             anyhow::bail!("Maximum file size must be greater than 0");
         }
-        
+
         if self.max_files == 0 {
             anyhow::bail!("Maximum number of files must be greater than 0");
         }
 
         // Validate strategy-specific constraints
         self.strategy.validate()?;
-        
+
         Ok(())
     }
 
@@ -386,7 +393,7 @@ impl TimeUnit {
     }
 
     /// Get duration in seconds for the time unit
-    /// 
+    ///
     /// Note: Monthly uses calendar-aware calculation via `duration_from_now()` for accuracy.
     /// This method returns a fixed approximation (30 days) for backward compatibility.
     pub fn duration_seconds(&self) -> u64 {
@@ -399,11 +406,11 @@ impl TimeUnit {
     }
 
     /// Get the actual duration from a given timestamp, accounting for calendar variations
-    /// 
+    ///
     /// This is more accurate for Monthly rotation as it considers actual month lengths.
     pub fn duration_from(&self, from: chrono::DateTime<chrono::Utc>) -> chrono::Duration {
         use chrono::{Duration, Months};
-        
+
         match self {
             TimeUnit::Hourly => Duration::hours(1),
             TimeUnit::Daily => Duration::days(1),
@@ -488,8 +495,14 @@ mod tests {
     #[test]
     fn test_both_outputs_disabled() {
         let config = LoggerConfig {
-            console: ConsoleConfig { enabled: false, colored: false },
-            file: FileConfig { enabled: false, ..Default::default() },
+            console: ConsoleConfig {
+                enabled: false,
+                colored: false,
+            },
+            file: FileConfig {
+                enabled: false,
+                ..Default::default()
+            },
             level: "info".to_string(),
         };
         assert!(config.validate().is_err());
@@ -509,30 +522,15 @@ mod tests {
     #[test]
     fn test_rotation_config_validation() {
         // Valid config
-        let config = RotationConfig::new(
-            RotationStrategy::Size,
-            1024,
-            5,
-            false,
-        );
+        let config = RotationConfig::new(RotationStrategy::Size, 1024, 5, false);
         assert!(config.is_ok());
 
         // Invalid max_size
-        let config = RotationConfig::new(
-            RotationStrategy::Size,
-            0,
-            5,
-            false,
-        );
+        let config = RotationConfig::new(RotationStrategy::Size, 0, 5, false);
         assert!(config.is_err());
 
         // Invalid max_files
-        let config = RotationConfig::new(
-            RotationStrategy::Size,
-            1024,
-            0,
-            false,
-        );
+        let config = RotationConfig::new(RotationStrategy::Size, 1024, 0, false);
         assert!(config.is_err());
     }
 
@@ -551,7 +549,7 @@ mod tests {
             .level("debug")
             .console(ConsoleConfig::new(true, false))
             .build();
-        
+
         assert!(config.is_ok());
         let config = config.unwrap();
         assert_eq!(config.level, "debug");

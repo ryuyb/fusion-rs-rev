@@ -215,7 +215,7 @@ mod tests {
                 let rotated_path = dir.path().join(&rotated_name);
                 let mut file = fs::File::create(&rotated_path).unwrap();
                 writeln!(file, "content {}", i).unwrap();
-                
+
                 // Set modification time explicitly using filetime
                 // Earlier files get older timestamps
                 let base_time = std::time::SystemTime::now()

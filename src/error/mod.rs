@@ -1,8 +1,8 @@
 mod app_error;
-mod database_converter;
 mod constraint_parser;
+mod database_converter;
 
 #[allow(unused_imports)]
 pub use app_error::{AppError, AppResult, ValidationFieldError};
-pub use database_converter::DatabaseErrorConverter;
 pub use constraint_parser::ConstraintParser;
+pub use database_converter::DatabaseErrorConverter;

@@ -2,7 +2,7 @@
 //!
 //! Provides endpoints for the authenticated user to access their own information.
 
-use axum::{extract::State, Extension, Json};
+use axum::{Extension, Json, extract::State};
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
@@ -20,8 +20,7 @@ use crate::state::AppState;
 /// # Authentication
 /// All routes require JWT authentication via the auth_middleware
 pub fn me_routes() -> OpenApiRouter<AppState> {
-    OpenApiRouter::new()
-        .routes(routes!(get_me))
+    OpenApiRouter::new().routes(routes!(get_me))
 }
 
 /// GET /api/me - Get current user information

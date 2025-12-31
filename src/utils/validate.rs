@@ -1,7 +1,7 @@
 use crate::error::{AppError, AppResult};
 use axum::extract::{
-    rejection::{FormRejection, JsonRejection, QueryRejection},
     Form, FromRequest, FromRequestParts, Json, Query, Request,
+    rejection::{FormRejection, JsonRejection, QueryRejection},
 };
 use serde::de::DeserializeOwned;
 use validator::Validate;
@@ -71,13 +71,17 @@ where
 mod tests {
     use super::*;
     use axum::body::Body;
-    use axum::http::{header, Method};
+    use axum::http::{Method, header};
     use serde::Deserialize;
     use validator::Validate;
 
     #[derive(Debug, Deserialize, Validate)]
     struct TestData {
-        #[validate(length(min = 3, max = 20, message = "Username must be between 3 and 20 characters"))]
+        #[validate(length(
+            min = 3,
+            max = 20,
+            message = "Username must be between 3 and 20 characters"
+        ))]
         username: String,
         #[validate(email(message = "Invalid email format"))]
         email: String,

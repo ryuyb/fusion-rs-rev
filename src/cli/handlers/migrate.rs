@@ -3,8 +3,8 @@
 //! Handles database migration operations including dry-run and rollback.
 
 use crate::config::settings::Settings;
-use crate::error::AppResult;
 use crate::db::MIGRATIONS;
+use crate::error::AppResult;
 
 /// Handler for the migrate command
 pub struct MigrateCommandHandler {
@@ -54,22 +54,23 @@ impl MigrateCommandHandler {
 
         let database_url = self.config.database.url.clone();
         let pending_count: usize = tokio::task::spawn_blocking(move || {
-            use diesel::pg::PgConnection;
             use diesel::Connection;
+            use diesel::pg::PgConnection;
             use diesel_migrations::MigrationHarness;
 
-            let mut conn = PgConnection::establish(&database_url)
-                .map_err(|e| crate::error::AppError::Database {
+            let mut conn = PgConnection::establish(&database_url).map_err(|e| {
+                crate::error::AppError::Database {
                     operation: "establish connection for migration check".to_string(),
                     source: anyhow::anyhow!("Connection error: {}", e),
-                })?;
+                }
+            })?;
 
-            let pending = conn
-                .pending_migrations(MIGRATIONS)
-                .map_err(|e| crate::error::AppError::Database {
+            let pending = conn.pending_migrations(MIGRATIONS).map_err(|e| {
+                crate::error::AppError::Database {
                     operation: "check pending migrations".to_string(),
                     source: anyhow::anyhow!("Migration error: {}", e),
-                })?;
+                }
+            })?;
 
             Ok::<_, crate::error::AppError>(pending.len())
         })
@@ -94,22 +95,23 @@ impl MigrateCommandHandler {
 
         let database_url = self.config.database.url.clone();
         let applied_migrations = tokio::task::spawn_blocking(move || {
-            use diesel::pg::PgConnection;
             use diesel::Connection;
+            use diesel::pg::PgConnection;
             use diesel_migrations::MigrationHarness;
 
-            let mut conn = PgConnection::establish(&database_url)
-                .map_err(|e| crate::error::AppError::Database {
+            let mut conn = PgConnection::establish(&database_url).map_err(|e| {
+                crate::error::AppError::Database {
                     operation: "establish connection for migrations".to_string(),
                     source: anyhow::anyhow!("Connection error: {}", e),
-                })?;
+                }
+            })?;
 
-            let applied = conn
-                .run_pending_migrations(MIGRATIONS)
-                .map_err(|e| crate::error::AppError::Database {
+            let applied = conn.run_pending_migrations(MIGRATIONS).map_err(|e| {
+                crate::error::AppError::Database {
                     operation: "run pending migrations".to_string(),
                     source: anyhow::anyhow!("Migration error: {}", e),
-                })?;
+                }
+            })?;
 
             let migration_names: Vec<String> = applied.iter().map(|m| m.to_string()).collect();
             Ok::<_, crate::error::AppError>(migration_names)
@@ -145,22 +147,23 @@ impl MigrateCommandHandler {
 
         let database_url = self.config.database.url.clone();
         let reverted_count: usize = tokio::task::spawn_blocking(move || {
-            use diesel::pg::PgConnection;
             use diesel::Connection;
+            use diesel::pg::PgConnection;
             use diesel_migrations::MigrationHarness;
 
-            let mut conn = PgConnection::establish(&database_url)
-                .map_err(|e| crate::error::AppError::Database {
+            let mut conn = PgConnection::establish(&database_url).map_err(|e| {
+                crate::error::AppError::Database {
                     operation: "establish connection for rollback".to_string(),
                     source: anyhow::anyhow!("Connection error: {}", e),
-                })?;
+                }
+            })?;
 
-            let applied = conn
-                .applied_migrations()
-                .map_err(|e| crate::error::AppError::Database {
-                    operation: "get applied migrations".to_string(),
-                    source: anyhow::anyhow!("Migration error: {}", e),
-                })?;
+            let applied =
+                conn.applied_migrations()
+                    .map_err(|e| crate::error::AppError::Database {
+                        operation: "get applied migrations".to_string(),
+                        source: anyhow::anyhow!("Migration error: {}", e),
+                    })?;
 
             if applied.len() < steps as usize {
                 return Err(crate::error::AppError::Validation {
@@ -175,11 +178,12 @@ impl MigrateCommandHandler {
 
             let mut reverted_count = 0;
             for _ in 0..steps {
-                conn.revert_last_migration(MIGRATIONS)
-                    .map_err(|e| crate::error::AppError::Database {
+                conn.revert_last_migration(MIGRATIONS).map_err(|e| {
+                    crate::error::AppError::Database {
                         operation: "revert migration".to_string(),
                         source: anyhow::anyhow!("Migration rollback error: {}", e),
-                    })?;
+                    }
+                })?;
                 reverted_count += 1;
             }
 
@@ -223,10 +227,10 @@ mod tests {
     async fn test_migrate_handler_zero_rollback_steps() {
         let config = create_valid_config();
         let handler = MigrateCommandHandler::new(config);
-        
+
         let result = handler.execute(false, Some(0)).await;
         assert!(result.is_err());
-        
+
         if let Err(crate::error::AppError::Validation { field, reason }) = result {
             assert_eq!(field, "rollback_steps");
             assert!(reason.contains("must be greater than 0"));

@@ -33,8 +33,13 @@ impl UserRepository {
     /// The created user with generated id and timestamps
     pub async fn create(&self, new_user: NewUser) -> AppResult<User> {
         use crate::schema::users::dsl::*;
-        let mut conn = self.pool.get().await
-            .map_err(|e| AppError::ConnectionPool { source: anyhow::Error::from(e) })?;
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| AppError::ConnectionPool {
+                source: anyhow::Error::from(e),
+            })?;
 
         diesel::insert_into(users)
             .values(&new_user)
@@ -53,8 +58,13 @@ impl UserRepository {
     /// `Some(User)` if found, `None` otherwise
     pub async fn find_by_id(&self, user_id: i32) -> AppResult<Option<User>> {
         use crate::schema::users::dsl::*;
-        let mut conn = self.pool.get().await
-            .map_err(|e| AppError::ConnectionPool { source: anyhow::Error::from(e) })?;
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| AppError::ConnectionPool {
+                source: anyhow::Error::from(e),
+            })?;
 
         users
             .filter(id.eq(user_id))
@@ -65,7 +75,6 @@ impl UserRepository {
             .map_err(AppError::from)
     }
 
-
     /// Finds a user by their email address.
     ///
     /// # Arguments
@@ -75,8 +84,13 @@ impl UserRepository {
     /// `Some(User)` if found, `None` otherwise
     pub async fn find_by_email(&self, user_email: &str) -> AppResult<Option<User>> {
         use crate::schema::users::dsl::*;
-        let mut conn = self.pool.get().await
-            .map_err(|e| AppError::ConnectionPool { source: anyhow::Error::from(e) })?;
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| AppError::ConnectionPool {
+                source: anyhow::Error::from(e),
+            })?;
 
         users
             .filter(email.eq(user_email))
@@ -93,8 +107,13 @@ impl UserRepository {
     /// A vector of all users
     pub async fn list_all(&self) -> AppResult<Vec<User>> {
         use crate::schema::users::dsl::*;
-        let mut conn = self.pool.get().await
-            .map_err(|e| AppError::ConnectionPool { source: anyhow::Error::from(e) })?;
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| AppError::ConnectionPool {
+                source: anyhow::Error::from(e),
+            })?;
 
         users
             .select(User::as_select())
@@ -113,8 +132,13 @@ impl UserRepository {
     /// A tuple of (users, total_count)
     pub async fn list_paginated(&self, offset: i64, limit: i64) -> AppResult<(Vec<User>, i64)> {
         use crate::schema::users::dsl::*;
-        let mut conn = self.pool.get().await
-            .map_err(|e| AppError::ConnectionPool { source: anyhow::Error::from(e) })?;
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| AppError::ConnectionPool {
+                source: anyhow::Error::from(e),
+            })?;
 
         // Get the paginated users
         let users_result = users
@@ -145,8 +169,13 @@ impl UserRepository {
     /// The updated user
     pub async fn update(&self, user_id: i32, update_data: UpdateUser) -> AppResult<User> {
         use crate::schema::users::dsl::*;
-        let mut conn = self.pool.get().await
-            .map_err(|e| AppError::ConnectionPool { source: anyhow::Error::from(e) })?;
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| AppError::ConnectionPool {
+                source: anyhow::Error::from(e),
+            })?;
 
         diesel::update(users.filter(id.eq(user_id)))
             .set(&update_data)
@@ -165,8 +194,13 @@ impl UserRepository {
     /// The number of affected rows (0 or 1)
     pub async fn delete(&self, user_id: i32) -> AppResult<usize> {
         use crate::schema::users::dsl::*;
-        let mut conn = self.pool.get().await
-            .map_err(|e| AppError::ConnectionPool { source: anyhow::Error::from(e) })?;
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| AppError::ConnectionPool {
+                source: anyhow::Error::from(e),
+            })?;
 
         diesel::delete(users.filter(id.eq(user_id)))
             .execute(&mut conn)

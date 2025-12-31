@@ -51,36 +51,36 @@ pub struct Cli {
     /// Subcommand to execute
     #[command(subcommand)]
     pub command: Option<Commands>,
-    
+
     /// Configuration file path
-    /// 
+    ///
     /// Specify a custom configuration file to use instead of the default.
     /// The file should be in TOML format and contain valid configuration sections.
     /// The file must exist and be readable.
-    /// 
+    ///
     /// Example: --config /etc/fusion-rs/production.toml
     #[arg(short, long, value_name = "FILE", value_parser = super::validation::validate_config_file_path)]
     pub config: Option<PathBuf>,
-    
+
     /// Override environment detection
-    /// 
+    ///
     /// Force the application to use a specific environment configuration.
     /// This affects which configuration files are loaded and default settings.
-    /// 
+    ///
     /// Available values: development (dev), production (prod), test
     #[arg(short, long, value_enum)]
     pub env: Option<Environment>,
-    
+
     /// Enable verbose logging
-    /// 
+    ///
     /// Increases log output to debug level, showing detailed information
     /// about application operations. Useful for troubleshooting.
     /// Cannot be used with --quiet.
     #[arg(short, long)]
     pub verbose: bool,
-    
+
     /// Suppress non-error output
-    /// 
+    ///
     /// Reduces log output to error level only, hiding informational messages.
     /// Useful for production deployments or automated scripts.
     /// Cannot be used with --verbose.
@@ -92,46 +92,46 @@ pub struct Cli {
 #[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Start the web server (default)
-    /// 
+    ///
     /// Launches the HTTP server with the configured settings. The server will
     /// bind to the specified host and port, load the database connection pool,
     /// and begin accepting requests.
-    /// 
+    ///
     /// Examples:
     ///   fusion-rs serve                           # Start with defaults
     ///   fusion-rs serve --host 0.0.0.0 --port 80 # Bind to all interfaces on port 80
     ///   fusion-rs serve --dry-run                 # Validate config without starting
     Serve {
         /// Host address to bind to
-        /// 
+        ///
         /// The network interface address where the server will listen for connections.
         /// Use 127.0.0.1 for localhost only, or 0.0.0.0 to accept connections from any interface.
         /// Must be a valid IPv4 address, hostname, or 'localhost'.
-        /// 
+        ///
         /// Default: 127.0.0.1
         #[arg(long, value_name = "ADDRESS", value_parser = super::validation::validate_host_address)]
         host: Option<String>,
-        
+
         /// Port number to listen on
-        /// 
+        ///
         /// The TCP port where the server will accept HTTP connections.
         /// Must be between 1 and 65535. Ports below 1024 typically require root privileges.
-        /// 
+        ///
         /// Default: 3000
         #[arg(short, long, value_name = "PORT", value_parser = super::validation::validate_port)]
         port: Option<u16>,
-        
+
         /// Log level override
-        /// 
+        ///
         /// Set the logging verbosity for this server instance.
         /// This overrides both configuration file settings and global --verbose/--quiet flags.
-        /// 
+        ///
         /// Available levels: error, warn, info, debug, trace
         #[arg(long, value_enum)]
         log_level: Option<LogLevel>,
-        
+
         /// Validate configuration and exit
-        /// 
+        ///
         /// Performs a complete configuration validation check without starting the server.
         /// Useful for testing configuration changes or deployment validation.
         /// Returns exit code 0 if valid, non-zero if invalid.
@@ -139,30 +139,30 @@ pub enum Commands {
         dry_run: bool,
     },
     /// Database migration operations
-    /// 
+    ///
     /// Manage database schema migrations. This command connects to the configured
     /// database and applies or rolls back schema changes.
-    /// 
+    ///
     /// Examples:
     ///   fusion-rs migrate                    # Apply all pending migrations
     ///   fusion-rs migrate --dry-run          # Show pending migrations without applying
     ///   fusion-rs migrate --rollback 3       # Rollback the last 3 migrations
     Migrate {
         /// Show pending migrations without applying
-        /// 
+        ///
         /// Lists all migrations that would be applied without actually running them.
         /// Useful for reviewing changes before deployment.
         /// Cannot be used with --rollback.
         #[arg(long, conflicts_with = "rollback")]
         dry_run: bool,
-        
+
         /// Number of migrations to rollback
-        /// 
+        ///
         /// Reverts the specified number of most recent migrations.
         /// Use with caution as this can result in data loss.
         /// Must be between 1 and 100 for safety reasons.
         /// Cannot be used with --dry-run.
-        /// 
+        ///
         /// Example: --rollback 2 (reverts last 2 migrations)
         #[arg(long, value_name = "STEPS", conflicts_with = "dry_run", value_parser = super::validation::validate_rollback_steps)]
         rollback: Option<u32>,
@@ -197,7 +197,7 @@ pub enum LogLevel {
 
 impl Cli {
     /// Validate CLI arguments and provide detailed error messages
-    /// 
+    ///
     /// This method performs additional validation beyond what clap provides,
     /// ensuring that all argument combinations are valid and providing
     /// specific error messages for validation failures.
@@ -205,11 +205,19 @@ impl Cli {
         // Validate command-specific arguments
         if let Some(ref command) = self.command {
             match command {
-                Commands::Serve { host, port, log_level: _, dry_run: _ } => {
+                Commands::Serve {
+                    host,
+                    port,
+                    log_level: _,
+                    dry_run: _,
+                } => {
                     // Additional validation for serve command
                     if let Some(host_addr) = host {
                         // Host validation is already done by clap, but we can add additional checks
-                        if host_addr == "0.0.0.0" && port.is_some() && *port.as_ref().unwrap() < 1024 {
+                        if host_addr == "0.0.0.0"
+                            && port.is_some()
+                            && *port.as_ref().unwrap() < 1024
+                        {
                             return Err("Warning: Binding to 0.0.0.0 on a privileged port (< 1024) typically requires root privileges".to_string());
                         }
                     }
@@ -322,8 +330,16 @@ mod tests {
 
     #[test]
     fn test_serve_command() {
-        let cli = Cli::try_parse_from(&["fusion-rs", "serve", "--host", "0.0.0.0", "--port", "8080"]).unwrap();
-        if let Some(Commands::Serve { host, port, log_level: _, dry_run }) = cli.command {
+        let cli =
+            Cli::try_parse_from(&["fusion-rs", "serve", "--host", "0.0.0.0", "--port", "8080"])
+                .unwrap();
+        if let Some(Commands::Serve {
+            host,
+            port,
+            log_level: _,
+            dry_run,
+        }) = cli.command
+        {
             assert_eq!(host, Some("0.0.0.0".to_string()));
             assert_eq!(port, Some(8080));
             assert!(!dry_run);

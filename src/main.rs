@@ -20,7 +20,10 @@ async fn main() -> anyhow::Result<()> {
         Ok(()) => {
             // Command completed successfully, or it's a serve command
             // Check if we should start the server
-            if matches!(cli.command, Some(cli::Commands::Serve { dry_run: false, .. }) | None) {
+            if matches!(
+                cli.command,
+                Some(cli::Commands::Serve { dry_run: false, .. }) | None
+            ) {
                 // Start the server
                 let server = Server::new(settings);
                 match server.run().await {
@@ -44,5 +47,3 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 }
-
-

@@ -5,9 +5,11 @@
 
 use crate::api::doc::ApiDoc;
 use crate::api::handlers;
-use crate::api::middleware::{auth_middleware, global_error_handler, logging_middleware, request_id_middleware};
+use crate::api::middleware::{
+    auth_middleware, global_error_handler, logging_middleware, request_id_middleware,
+};
 use crate::state::AppState;
-use axum::{middleware, Router};
+use axum::{Router, middleware};
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 use utoipa::OpenApi;
@@ -42,14 +44,16 @@ use utoipa_swagger_ui::SwaggerUi;
 /// ```
 pub fn create_router(state: AppState) -> Router {
     // Public auth routes
-    let public_auth_routes = OpenApiRouter::new()
-        .nest("/auth", handlers::auth::auth_routes());
+    let public_auth_routes = OpenApiRouter::new().nest("/auth", handlers::auth::auth_routes());
 
     // Protected routes (authentication required)
     let protected_routes = OpenApiRouter::new()
         .nest("/me", handlers::me::me_routes())
         .nest("/users", handlers::users::user_routes())
-        .layer(middleware::from_fn_with_state(state.clone(), auth_middleware));
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            auth_middleware,
+        ));
 
     let api_routes = OpenApiRouter::new()
         .merge(public_auth_routes)
@@ -58,7 +62,7 @@ pub fn create_router(state: AppState) -> Router {
     let (router, openapi) = OpenApiRouter::with_openapi(ApiDoc::openapi())
         .nest("/api", api_routes)
         .split_for_parts();
-    
+
     router
         // Add health check routes (no middleware needed for health checks)
         .merge(handlers::health::health_routes())

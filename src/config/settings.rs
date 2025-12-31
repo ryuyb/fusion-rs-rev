@@ -265,14 +265,14 @@ impl JwtConfig {
         if self.access_token_expiration >= self.refresh_token_expiration {
             return Err(ConfigError::ValidationError {
                 field: "jwt".to_string(),
-                message: "Refresh token expiration should be longer than access token expiration".to_string(),
+                message: "Refresh token expiration should be longer than access token expiration"
+                    .to_string(),
             });
         }
 
         Ok(())
     }
 }
-
 
 // ============================================================================
 // Logger Settings (compatible with existing LoggerConfig)
@@ -438,12 +438,12 @@ impl FileSettings {
 
     /// Parse the format string into LogFormat enum
     fn parse_format(&self) -> Result<LogFormat, ConfigError> {
-        self.format.parse::<LogFormat>().map_err(|e| {
-            ConfigError::ValidationError {
+        self.format
+            .parse::<LogFormat>()
+            .map_err(|e| ConfigError::ValidationError {
                 field: "logger.file.format".to_string(),
                 message: e.to_string(),
-            }
-        })
+            })
     }
 }
 
@@ -470,12 +470,8 @@ impl RotationSettings {
             "time" | "time_daily" | "daily" => {
                 Ok(RotationStrategy::Time(crate::logger::TimeUnit::Daily))
             }
-            "time_hourly" | "hourly" => {
-                Ok(RotationStrategy::Time(crate::logger::TimeUnit::Hourly))
-            }
-            "time_weekly" | "weekly" => {
-                Ok(RotationStrategy::Time(crate::logger::TimeUnit::Weekly))
-            }
+            "time_hourly" | "hourly" => Ok(RotationStrategy::Time(crate::logger::TimeUnit::Hourly)),
+            "time_weekly" | "weekly" => Ok(RotationStrategy::Time(crate::logger::TimeUnit::Weekly)),
             "time_monthly" | "monthly" => {
                 Ok(RotationStrategy::Time(crate::logger::TimeUnit::Monthly))
             }
@@ -544,8 +540,8 @@ mod tests {
 
     fn arb_application_config() -> impl Strategy<Value = ApplicationConfig> {
         (
-            "[a-z][a-z0-9-]{0,20}",  // name: valid app name
-            "[0-9]{1,2}\\.[0-9]{1,2}\\.[0-9]{1,2}",  // version: semver-like
+            "[a-z][a-z0-9-]{0,20}",                 // name: valid app name
+            "[0-9]{1,2}\\.[0-9]{1,2}\\.[0-9]{1,2}", // version: semver-like
         )
             .prop_map(|(name, version)| ApplicationConfig { name, version })
     }
@@ -557,16 +553,18 @@ mod tests {
                 Just("0.0.0.0".to_string()),
                 Just("localhost".to_string()),
             ],
-            1u16..=65535u16,  // valid port range
-            1u64..=300u64,    // request_timeout
-            1u64..=300u64,    // keep_alive_timeout
+            1u16..=65535u16, // valid port range
+            1u64..=300u64,   // request_timeout
+            1u64..=300u64,   // keep_alive_timeout
         )
-            .prop_map(|(host, port, request_timeout, keep_alive_timeout)| ServerConfig {
-                host,
-                port,
-                request_timeout,
-                keep_alive_timeout,
-            })
+            .prop_map(
+                |(host, port, request_timeout, keep_alive_timeout)| ServerConfig {
+                    host,
+                    port,
+                    request_timeout,
+                    keep_alive_timeout,
+                },
+            )
     }
 
     fn arb_database_config() -> impl Strategy<Value = DatabaseConfig> {
@@ -576,38 +574,43 @@ mod tests {
                 Just("postgres://user:pass@host:5432/db".to_string()),
                 Just("sqlite://./test.db".to_string()),
             ],
-            1u32..=100u32,  // max_connections
-            1u32..=10u32,   // min_connections
-            1u64..=120u64,  // connection_timeout
+            1u32..=100u32, // max_connections
+            1u32..=10u32,  // min_connections
+            1u64..=120u64, // connection_timeout
         )
-            .prop_map(|(url, max_connections, min_connections, connection_timeout)| {
-                // Ensure min <= max
-                let min = min_connections.min(max_connections);
-                DatabaseConfig {
-                    url,
-                    max_connections,
-                    min_connections: min,
-                    connection_timeout,
-                    auto_migrate: false,
-                }
-            })
+            .prop_map(
+                |(url, max_connections, min_connections, connection_timeout)| {
+                    // Ensure min <= max
+                    let min = min_connections.min(max_connections);
+                    DatabaseConfig {
+                        url,
+                        max_connections,
+                        min_connections: min,
+                        connection_timeout,
+                        auto_migrate: false,
+                    }
+                },
+            )
     }
 
     fn arb_jwt_config() -> impl Strategy<Value = JwtConfig> {
         (
-            "[a-zA-Z0-9]{32,64}",  // secret: 32-64 chars
-            1i64..=24i64,          // access_token_expiration: 1-24 hours
-            25i64..=720i64,        // refresh_token_expiration: 25-720 hours (ensure > access)
+            "[a-zA-Z0-9]{32,64}", // secret: 32-64 chars
+            1i64..=24i64,         // access_token_expiration: 1-24 hours
+            25i64..=720i64,       // refresh_token_expiration: 25-720 hours (ensure > access)
         )
-            .prop_map(|(secret, access_token_expiration, refresh_token_expiration)| JwtConfig {
-                secret,
-                access_token_expiration,
-                refresh_token_expiration,
-            })
+            .prop_map(
+                |(secret, access_token_expiration, refresh_token_expiration)| JwtConfig {
+                    secret,
+                    access_token_expiration,
+                    refresh_token_expiration,
+                },
+            )
     }
 
     fn arb_console_settings() -> impl Strategy<Value = ConsoleSettings> {
-        (any::<bool>(), any::<bool>()).prop_map(|(enabled, colored)| ConsoleSettings { enabled, colored })
+        (any::<bool>(), any::<bool>())
+            .prop_map(|(enabled, colored)| ConsoleSettings { enabled, colored })
     }
 
     fn arb_rotation_settings() -> impl Strategy<Value = RotationSettings> {
@@ -621,27 +624,29 @@ mod tests {
                 Just("weekly".to_string()),
                 Just("monthly".to_string()),
             ],
-            1024u64..=100_000_000u64,  // max_size
-            1usize..=20usize,          // max_files
-            any::<bool>(),             // compress
+            1024u64..=100_000_000u64, // max_size
+            1usize..=20usize,         // max_files
+            any::<bool>(),            // compress
         )
-            .prop_map(|(strategy, max_size, max_files, compress)| RotationSettings {
-                strategy,
-                max_size,
-                max_files,
-                compress,
-            })
+            .prop_map(
+                |(strategy, max_size, max_files, compress)| RotationSettings {
+                    strategy,
+                    max_size,
+                    max_files,
+                    compress,
+                },
+            )
     }
 
     fn arb_file_settings() -> impl Strategy<Value = FileSettings> {
         (
-            any::<bool>(),  // enabled
+            any::<bool>(), // enabled
             prop_oneof![
                 Just("logs/app.log".to_string()),
                 Just("logs/test.log".to_string()),
                 Just("/var/log/app.log".to_string()),
             ],
-            any::<bool>(),  // append
+            any::<bool>(), // append
             prop_oneof![
                 Just("json".to_string()),
                 Just("full".to_string()),
@@ -670,7 +675,11 @@ mod tests {
             arb_console_settings(),
             arb_file_settings(),
         )
-            .prop_map(|(level, console, file)| LoggerSettings { level, console, file })
+            .prop_map(|(level, console, file)| LoggerSettings {
+                level,
+                console,
+                file,
+            })
     }
 
     fn arb_settings() -> impl Strategy<Value = Settings> {
@@ -903,7 +912,7 @@ mod tests {
             [server]
             port = 8080
         "#;
-        
+
         let settings: Settings = toml::from_str(toml_str).expect("Failed to deserialize");
         assert_eq!(settings.application.name, "my-app");
         assert_eq!(settings.application.version, "0.1.0"); // default
@@ -949,22 +958,22 @@ mod tests {
             max_files = 10
             compress = true
         "#;
-        
+
         let settings: Settings = toml::from_str(toml_str).expect("Failed to deserialize");
-        
+
         assert_eq!(settings.application.name, "test-app");
         assert_eq!(settings.application.version, "1.0.0");
-        
+
         assert_eq!(settings.server.host, "0.0.0.0");
         assert_eq!(settings.server.port, 8080);
         assert_eq!(settings.server.request_timeout, 60);
         assert_eq!(settings.server.keep_alive_timeout, 120);
-        
+
         assert_eq!(settings.database.url, "postgres://localhost/test");
         assert_eq!(settings.database.max_connections, 20);
         assert_eq!(settings.database.min_connections, 5);
         assert_eq!(settings.database.connection_timeout, 60);
-        
+
         assert_eq!(settings.logger.level, "debug");
         assert!(settings.logger.console.enabled);
         assert!(!settings.logger.console.colored);
@@ -1093,7 +1102,7 @@ mod tests {
             ("full", LogFormat::Full),
             ("compact", LogFormat::Compact),
             ("json", LogFormat::Json),
-            ("FULL", LogFormat::Full),     // case insensitive
+            ("FULL", LogFormat::Full),       // case insensitive
             ("Compact", LogFormat::Compact), // case insensitive
         ] {
             let settings = FileSettings {
@@ -1101,7 +1110,11 @@ mod tests {
                 ..Default::default()
             };
             let config = settings.into_file_config().expect("Should convert");
-            assert_eq!(config.format, expected, "Format {} should convert", format_str);
+            assert_eq!(
+                config.format, expected,
+                "Format {} should convert",
+                format_str
+            );
         }
     }
 

@@ -145,7 +145,9 @@ impl ConfigLoader {
         let builder = self.add_file_source(builder, &default_path, true)?;
 
         // 2. Add {environment}.toml (optional)
-        let env_path = self.config_dir.join(format!("{}.toml", self.environment.as_str()));
+        let env_path = self
+            .config_dir
+            .join(format!("{}.toml", self.environment.as_str()));
         let builder = self.add_file_source(builder, &env_path, false)?;
 
         // 3. Add local.toml (optional)
@@ -213,13 +215,12 @@ impl Default for ConfigLoader {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
-    use tempfile::TempDir;
     use std::sync::Mutex;
+    use tempfile::TempDir;
 
     // Global mutex to ensure tests run sequentially to avoid env var conflicts
     static TEST_MUTEX: Mutex<()> = Mutex::new(());
@@ -283,7 +284,7 @@ mod tests {
     fn test_config_loader_new_default() {
         let _guard = TEST_MUTEX.lock().unwrap();
         let mut env = EnvGuard::new();
-        
+
         // Clear environment variables
         env.remove("FUSION_CONFIG_DIR");
         env.remove("FUSION_CONFIG_FILE");
@@ -299,7 +300,7 @@ mod tests {
     fn test_config_loader_with_config_dir() {
         let _guard = TEST_MUTEX.lock().unwrap();
         let mut env = EnvGuard::new();
-        
+
         env.remove("FUSION_CONFIG_FILE");
         env.set("FUSION_CONFIG_DIR", "/custom/config");
 
@@ -311,7 +312,7 @@ mod tests {
     fn test_config_loader_with_config_file() {
         let _guard = TEST_MUTEX.lock().unwrap();
         let mut env = EnvGuard::new();
-        
+
         env.remove("FUSION_CONFIG_DIR");
         env.set("FUSION_CONFIG_FILE", "/path/to/config.toml");
 
@@ -326,7 +327,7 @@ mod tests {
     fn test_config_loader_mutual_exclusivity_error() {
         let _guard = TEST_MUTEX.lock().unwrap();
         let mut env = EnvGuard::new();
-        
+
         env.set("FUSION_CONFIG_DIR", "/custom/config");
         env.set("FUSION_CONFIG_FILE", "/path/to/config.toml");
 
@@ -344,7 +345,7 @@ mod tests {
     fn test_config_loader_environment_from_env() {
         let _guard = TEST_MUTEX.lock().unwrap();
         let mut env = EnvGuard::new();
-        
+
         env.remove("FUSION_CONFIG_DIR");
         env.remove("FUSION_CONFIG_FILE");
         env.set("FUSION_APP_ENV", "production");
@@ -357,7 +358,7 @@ mod tests {
     fn test_load_missing_default_toml() {
         let _guard = TEST_MUTEX.lock().unwrap();
         let mut env = EnvGuard::new();
-        
+
         let temp_dir = setup_config_dir(&[]);
 
         env.set("FUSION_CONFIG_DIR", temp_dir.path().to_str().unwrap());
@@ -379,7 +380,7 @@ mod tests {
     fn test_load_default_toml_only() {
         let _guard = TEST_MUTEX.lock().unwrap();
         let mut env = EnvGuard::new();
-        
+
         let default_config = r#"
 [application]
 name = "test-app"
@@ -436,7 +437,7 @@ compress = false
     fn test_load_with_environment_override() {
         let _guard = TEST_MUTEX.lock().unwrap();
         let mut env = EnvGuard::new();
-        
+
         let default_config = r#"
 [application]
 name = "test-app"
@@ -503,7 +504,7 @@ max_connections = 50
     fn test_load_with_local_override() {
         let _guard = TEST_MUTEX.lock().unwrap();
         let mut env = EnvGuard::new();
-        
+
         let default_config = r#"
 [application]
 name = "test-app"
@@ -565,7 +566,7 @@ url = "postgres://localhost/local_dev"
     fn test_load_with_env_var_override() {
         let _guard = TEST_MUTEX.lock().unwrap();
         let mut env = EnvGuard::new();
-        
+
         let default_config = r#"
 [application]
 name = "test-app"
@@ -621,7 +622,7 @@ enabled = false
     fn test_load_full_precedence_chain() {
         let _guard = TEST_MUTEX.lock().unwrap();
         let mut env = EnvGuard::new();
-        
+
         let default_config = r#"
 [application]
 name = "default-app"
@@ -703,7 +704,7 @@ url = "postgres://local/db"
     fn test_load_single_file_mode() {
         let _guard = TEST_MUTEX.lock().unwrap();
         let mut env = EnvGuard::new();
-        
+
         let single_config = r#"
 [application]
 name = "single-file-app"
@@ -753,7 +754,7 @@ enabled = false
     fn test_optional_files_not_required() {
         let _guard = TEST_MUTEX.lock().unwrap();
         let mut env = EnvGuard::new();
-        
+
         // Only default.toml exists, no environment or local files
         let default_config = r#"
 [application]

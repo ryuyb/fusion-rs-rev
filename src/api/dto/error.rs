@@ -1,7 +1,7 @@
 //! Error response DTOs.
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use utoipa::ToSchema;
 
 /// Standard error response format with flexible details.
@@ -61,7 +61,10 @@ impl ErrorResponse {
     pub fn duplicate_error(entity: &str, field: &str, value: &str) -> Self {
         Self {
             code: "DUPLICATE_ENTRY".to_string(),
-            message: format!("Duplicate entry: {}.{} = '{}' already exists", entity, field, value),
+            message: format!(
+                "Duplicate entry: {}.{} = '{}' already exists",
+                entity, field, value
+            ),
             details: Some(json!({
                 "entity": entity,
                 "field": field,
@@ -86,9 +89,9 @@ mod tests {
 
     #[test]
     fn test_error_response_with_details() {
-        let error = ErrorResponse::new("TEST_ERROR", "Test message")
-            .with_details(json!({"key": "value"}));
-        
+        let error =
+            ErrorResponse::new("TEST_ERROR", "Test message").with_details(json!({"key": "value"}));
+
         assert_eq!(error.code, "TEST_ERROR");
         assert_eq!(error.message, "Test message");
         assert!(error.details.is_some());
@@ -98,11 +101,11 @@ mod tests {
     #[test]
     fn test_validation_error() {
         let error = ErrorResponse::validation_error("email", "invalid format");
-        
+
         assert_eq!(error.code, "VALIDATION_ERROR");
         assert_eq!(error.message, "Validation failed for email: invalid format");
         assert!(error.details.is_some());
-        
+
         let details = error.details.unwrap();
         assert_eq!(details["field"], "email");
         assert_eq!(details["reason"], "invalid format");
@@ -111,11 +114,11 @@ mod tests {
     #[test]
     fn test_not_found_error() {
         let error = ErrorResponse::not_found_error("user", "id", "123");
-        
+
         assert_eq!(error.code, "NOT_FOUND");
         assert_eq!(error.message, "Resource not found: user with id=123");
         assert!(error.details.is_some());
-        
+
         let details = error.details.unwrap();
         assert_eq!(details["entity"], "user");
         assert_eq!(details["field"], "id");
@@ -125,11 +128,14 @@ mod tests {
     #[test]
     fn test_duplicate_error() {
         let error = ErrorResponse::duplicate_error("user", "email", "test@example.com");
-        
+
         assert_eq!(error.code, "DUPLICATE_ENTRY");
-        assert_eq!(error.message, "Duplicate entry: user.email = 'test@example.com' already exists");
+        assert_eq!(
+            error.message,
+            "Duplicate entry: user.email = 'test@example.com' already exists"
+        );
         assert!(error.details.is_some());
-        
+
         let details = error.details.unwrap();
         assert_eq!(details["entity"], "user");
         assert_eq!(details["field"], "email");
@@ -139,10 +145,10 @@ mod tests {
     #[test]
     fn test_serialization_round_trip() {
         let original = ErrorResponse::validation_error("email", "invalid format");
-        
+
         let json_str = serde_json::to_string(&original).unwrap();
         let deserialized: ErrorResponse = serde_json::from_str(&json_str).unwrap();
-        
+
         assert_eq!(original.code, deserialized.code);
         assert_eq!(original.message, deserialized.message);
         assert_eq!(original.details, deserialized.details);

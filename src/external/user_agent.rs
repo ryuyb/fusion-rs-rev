@@ -1,4 +1,4 @@
-use rand::seq::{IndexedRandom};
+use rand::seq::IndexedRandom;
 use std::sync::LazyLock;
 
 /// Browser types supported in the User-Agent pool
@@ -209,7 +209,10 @@ impl UserAgentPool {
         ];
 
         let selected_pool = all_pools.choose(&mut rng).unwrap();
-        selected_pool.choose(&mut rng).copied().unwrap_or(selected_pool[0])
+        selected_pool
+            .choose(&mut rng)
+            .copied()
+            .unwrap_or(selected_pool[0])
     }
 }
 
