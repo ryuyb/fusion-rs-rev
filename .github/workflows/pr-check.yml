@@ -1,0 +1,90 @@
+name: PR Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v5
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v5
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v5
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Format check
+        id: fmt
+        continue-on-error: true
+        run: cargo fmt --all -- --check
+
+      - name: Clippy check
+        id: clippy
+        continue-on-error: true
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Build check
+        id: build
+        continue-on-error: true
+        run: cargo check --all-features
+
+      - name: Run tests
+        id: test
+        continue-on-error: true
+        run: cargo test --all-features
+
+      - name: Comment PR
+        if: always()
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fmt = '${{ steps.fmt.outcome }}';
+            const clippy = '${{ steps.clippy.outcome }}';
+            const build = '${{ steps.build.outcome }}';
+            const test = '${{ steps.test.outcome }}';
+
+            const icon = (status) => status === 'success' ? '✅' : '❌';
+            const allPassed = [fmt, clippy, build, test].every(s => s === 'success');
+
+            const body = `## PR Check Results
+
+            ${icon(fmt)} **Format Check**: ${fmt}
+            ${icon(clippy)} **Clippy Check**: ${clippy}
+            ${icon(build)} **Build Check**: ${build}
+            ${icon(test)} **Tests**: ${test}
+
+            ${allPassed ? '🎉 All checks passed!' : '⚠️ Some checks failed. Please review the logs.'}`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });

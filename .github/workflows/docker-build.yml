@@ -36,7 +36,7 @@ jobs:
     steps:
       # Checkout repository
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Set up Docker Buildx with BuildKit
       # Note: Using Zig for cross-compilation (no QEMU needed)
@@ -148,7 +148,7 @@ jobs:
     steps:
       # Checkout repository
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Download all digests
       - name: Download digests
