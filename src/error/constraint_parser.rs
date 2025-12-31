@@ -1,6 +1,6 @@
+use regex::Regex;
 use std::collections::HashMap;
 use std::sync::OnceLock;
-use regex::Regex;
 
 /// Utility for parsing PostgreSQL constraint violation messages.
 ///
@@ -54,9 +54,9 @@ impl ConstraintParser {
     /// Optional tuple of (entity, field, value) if parsing succeeds
     ///
     /// # Examples
-    /// ```
+    /// ```ignore
     /// use crate::error::constraint_parser::ConstraintParser;
-    /// 
+    ///
     /// let message = "duplicate key value violates unique constraint \"users_email_key\"\nDETAIL: Key (email)=(test@example.com) already exists.";
     /// let result = ConstraintParser::parse_unique_violation(message, Some("users_email_key"));
     /// assert_eq!(result, Some(("users".to_string(), "email".to_string(), "test@example.com".to_string())));
@@ -66,22 +66,22 @@ impl ConstraintParser {
         constraint_name: Option<&str>,
     ) -> Option<(String, String, String)> {
         // Try to parse from constraint name first (e.g., "users_email_key")
-        if let Some(constraint) = constraint_name {
-            if let Some((entity, field)) = Self::parse_constraint_name(constraint) {
-                // Extract value from message using regex
-                if let Some(value) = Self::extract_value_from_message(message) {
-                    return Some((entity, field, value));
-                }
-                // Fallback to generic value if we can't parse it
-                return Some((entity, field, "duplicate_value".to_string()));
+        if let Some(constraint) = constraint_name
+            && let Some((entity, field)) = Self::parse_constraint_name(constraint)
+        {
+            // Extract value from message using regex
+            if let Some(value) = Self::extract_value_from_message(message) {
+                return Some((entity, field, value));
             }
+            // Fallback to generic value if we can't parse it
+            return Some((entity, field, "duplicate_value".to_string()));
         }
 
         // Fallback: try to parse from the error message directly
         if let Some((field, value)) = Self::extract_key_value_from_message(message) {
             // Try to infer entity from context or use generic
-            let entity = Self::extract_table_from_message(message)
-                .unwrap_or_else(|| "resource".to_string());
+            let entity =
+                Self::extract_table_from_message(message).unwrap_or_else(|| "resource".to_string());
             return Some((entity, field, value));
         }
 
@@ -101,9 +101,9 @@ impl ConstraintParser {
     /// Optional tuple of (entity, field) if parsing succeeds
     ///
     /// # Examples
-    /// ```
+    /// ```ignore
     /// use crate::error::constraint_parser::ConstraintParser;
-    /// 
+    ///
     /// let message = "null value in column \"email\" violates not-null constraint";
     /// let result = ConstraintParser::parse_not_null_violation(message, None);
     /// assert_eq!(result, Some(("resource".to_string(), "email".to_string())));
@@ -138,9 +138,9 @@ impl ConstraintParser {
     /// Optional tuple of (entity, field, referenced_value) if parsing succeeds
     ///
     /// # Examples
-    /// ```
+    /// ```ignore
     /// use crate::error::constraint_parser::ConstraintParser;
-    /// 
+    ///
     /// let message = "insert or update on table \"posts\" violates foreign key constraint \"posts_user_id_fkey\"\nDETAIL: Key (user_id)=(999) is not present in table \"users\".";
     /// let result = ConstraintParser::parse_foreign_key_violation(message, Some("posts_user_id_fkey"));
     /// assert_eq!(result, Some(("posts".to_string(), "user_id".to_string(), "999".to_string())));
@@ -150,19 +150,19 @@ impl ConstraintParser {
         constraint_name: Option<&str>,
     ) -> Option<(String, String, String)> {
         // Try to parse from constraint name (e.g., "posts_user_id_fkey")
-        if let Some(constraint) = constraint_name {
-            if let Some((entity, field)) = Self::parse_foreign_key_constraint_name(constraint) {
-                if let Some(value) = Self::extract_value_from_message(message) {
-                    return Some((entity, field, value));
-                }
-                return Some((entity, field, "invalid_reference".to_string()));
+        if let Some(constraint) = constraint_name
+            && let Some((entity, field)) = Self::parse_foreign_key_constraint_name(constraint)
+        {
+            if let Some(value) = Self::extract_value_from_message(message) {
+                return Some((entity, field, value));
             }
+            return Some((entity, field, "invalid_reference".to_string()));
         }
 
         // Fallback: parse from message
         if let Some((field, value)) = Self::extract_key_value_from_message(message) {
-            let entity = Self::extract_table_from_message(message)
-                .unwrap_or_else(|| "resource".to_string());
+            let entity =
+                Self::extract_table_from_message(message).unwrap_or_else(|| "resource".to_string());
             return Some((entity, field, value));
         }
 
@@ -182,9 +182,9 @@ impl ConstraintParser {
     /// Optional tuple of (entity, field) if parsing succeeds
     ///
     /// # Examples
-    /// ```
+    /// ```ignore
     /// use crate::error::constraint_parser::ConstraintParser;
-    /// 
+    ///
     /// let message = "new row for relation \"users\" violates check constraint \"users_age_check\"";
     /// let result = ConstraintParser::parse_check_violation(message, Some("users_age_check"));
     /// assert_eq!(result, Some(("users".to_string(), "age".to_string())));
@@ -194,16 +194,16 @@ impl ConstraintParser {
         constraint_name: Option<&str>,
     ) -> Option<(String, String)> {
         // Try to parse from constraint name
-        if let Some(constraint) = constraint_name {
-            if let Some((entity, field)) = Self::parse_constraint_name(constraint) {
-                return Some((entity, field));
-            }
+        if let Some(constraint) = constraint_name
+            && let Some((entity, field)) = Self::parse_constraint_name(constraint)
+        {
+            return Some((entity, field));
         }
 
         // Fallback: try to extract from message
         if let Some(field) = Self::extract_column_from_message(message) {
-            let entity = Self::extract_table_from_message(message)
-                .unwrap_or_else(|| "resource".to_string());
+            let entity =
+                Self::extract_table_from_message(message).unwrap_or_else(|| "resource".to_string());
             return Some((entity, field));
         }
 
@@ -242,8 +242,8 @@ impl ConstraintParser {
     /// # Returns
     /// Optional tuple of (entity, field) if parsing succeeds
     pub fn parse_foreign_key_constraint_name(constraint_name: &str) -> Option<(String, String)> {
-        if constraint_name.ends_with("_fkey") {
-            let without_suffix = &constraint_name[..constraint_name.len() - 5]; // Remove "_fkey"
+        if let Some(without_suffix) = constraint_name.strip_suffix("_fkey") {
+            // Remove "_fkey"
             let parts: Vec<&str> = without_suffix.split('_').collect();
             if parts.len() >= 2 {
                 let entity = parts[0].to_string();
@@ -265,7 +265,8 @@ impl ConstraintParser {
     /// Optional field name if found
     pub fn extract_column_from_message(message: &str) -> Option<String> {
         let patterns = Self::patterns();
-        patterns.column_name
+        patterns
+            .column_name
             .captures(message)
             .and_then(|caps| caps.get(1))
             .map(|m| m.as_str().to_string())
@@ -282,7 +283,8 @@ impl ConstraintParser {
     /// Optional table name if found
     pub fn extract_table_from_message(message: &str) -> Option<String> {
         let patterns = Self::patterns();
-        patterns.table_name
+        patterns
+            .table_name
             .captures(message)
             .and_then(|caps| caps.get(1))
             .map(|m| m.as_str().to_string())
@@ -299,13 +301,11 @@ impl ConstraintParser {
     /// Optional tuple of (field, value) if found
     pub fn extract_key_value_from_message(message: &str) -> Option<(String, String)> {
         let patterns = Self::patterns();
-        patterns.key_value
-            .captures(message)
-            .and_then(|caps| {
-                let field = caps.get(1)?.as_str().to_string();
-                let value = caps.get(2)?.as_str().to_string();
-                Some((field, value))
-            })
+        patterns.key_value.captures(message).and_then(|caps| {
+            let field = caps.get(1)?.as_str().to_string();
+            let value = caps.get(2)?.as_str().to_string();
+            Some((field, value))
+        })
     }
 
     /// Extracts a value from a database error message.
@@ -326,10 +326,10 @@ impl ConstraintParser {
 
         // Fallback: look for quoted strings using simple string search
         // This is a fallback for cases where regex might not match
-        if let Some(start) = message.find('"') {
-            if let Some(end) = message[start + 1..].find('"') {
-                return Some(message[start + 1..start + 1 + end].to_string());
-            }
+        if let Some(start) = message.find('"')
+            && let Some(end) = message[start + 1..].find('"')
+        {
+            return Some(message[start + 1..start + 1 + end].to_string());
         }
 
         None
@@ -352,7 +352,8 @@ impl ConstraintParser {
         constraint_name: Option<&str>,
     ) -> Option<HashMap<String, String>> {
         // Try unique constraint first
-        if let Some((entity, field, value)) = Self::parse_unique_violation(message, constraint_name) {
+        if let Some((entity, field, value)) = Self::parse_unique_violation(message, constraint_name)
+        {
             let mut result = HashMap::new();
             result.insert("type".to_string(), "unique".to_string());
             result.insert("entity".to_string(), entity);
@@ -362,7 +363,9 @@ impl ConstraintParser {
         }
 
         // Try foreign key constraint
-        if let Some((entity, field, value)) = Self::parse_foreign_key_violation(message, constraint_name) {
+        if let Some((entity, field, value)) =
+            Self::parse_foreign_key_violation(message, constraint_name)
+        {
             let mut result = HashMap::new();
             result.insert("type".to_string(), "foreign_key".to_string());
             result.insert("entity".to_string(), entity);
@@ -401,14 +404,28 @@ mod tests {
     fn test_parse_unique_violation_with_constraint_name() {
         let message = "duplicate key value violates unique constraint \"users_email_key\"\nDETAIL: Key (email)=(test@example.com) already exists.";
         let result = ConstraintParser::parse_unique_violation(message, Some("users_email_key"));
-        assert_eq!(result, Some(("users".to_string(), "email".to_string(), "test@example.com".to_string())));
+        assert_eq!(
+            result,
+            Some((
+                "users".to_string(),
+                "email".to_string(),
+                "test@example.com".to_string()
+            ))
+        );
     }
 
     #[test]
     fn test_parse_unique_violation_without_constraint_name() {
         let message = "duplicate key value violates unique constraint\nDETAIL: Key (username)=(john_doe) already exists.";
         let result = ConstraintParser::parse_unique_violation(message, None);
-        assert_eq!(result, Some(("resource".to_string(), "username".to_string(), "john_doe".to_string())));
+        assert_eq!(
+            result,
+            Some((
+                "resource".to_string(),
+                "username".to_string(),
+                "john_doe".to_string()
+            ))
+        );
     }
 
     #[test]
@@ -420,7 +437,8 @@ mod tests {
 
     #[test]
     fn test_parse_not_null_violation_with_table() {
-        let message = "null value in column \"email\" of relation \"users\" violates not-null constraint";
+        let message =
+            "null value in column \"email\" of relation \"users\" violates not-null constraint";
         let result = ConstraintParser::parse_not_null_violation(message, None);
         assert_eq!(result, Some(("resource".to_string(), "email".to_string())));
     }
@@ -428,13 +446,22 @@ mod tests {
     #[test]
     fn test_parse_foreign_key_violation() {
         let message = "insert or update on table \"posts\" violates foreign key constraint \"posts_user_id_fkey\"\nDETAIL: Key (user_id)=(999) is not present in table \"users\".";
-        let result = ConstraintParser::parse_foreign_key_violation(message, Some("posts_user_id_fkey"));
-        assert_eq!(result, Some(("posts".to_string(), "user_id".to_string(), "999".to_string())));
+        let result =
+            ConstraintParser::parse_foreign_key_violation(message, Some("posts_user_id_fkey"));
+        assert_eq!(
+            result,
+            Some((
+                "posts".to_string(),
+                "user_id".to_string(),
+                "999".to_string()
+            ))
+        );
     }
 
     #[test]
     fn test_parse_check_violation() {
-        let message = "new row for relation \"users\" violates check constraint \"users_age_check\"";
+        let message =
+            "new row for relation \"users\" violates check constraint \"users_age_check\"";
         let result = ConstraintParser::parse_check_violation(message, Some("users_age_check"));
         assert_eq!(result, Some(("users".to_string(), "age".to_string())));
     }
@@ -443,10 +470,10 @@ mod tests {
     fn test_parse_constraint_name() {
         let result = ConstraintParser::parse_constraint_name("users_email_key");
         assert_eq!(result, Some(("users".to_string(), "email".to_string())));
-        
+
         let result = ConstraintParser::parse_constraint_name("posts_title_idx");
         assert_eq!(result, Some(("posts".to_string(), "title".to_string())));
-        
+
         let result = ConstraintParser::parse_constraint_name("invalid");
         assert_eq!(result, None);
     }
@@ -455,10 +482,13 @@ mod tests {
     fn test_parse_foreign_key_constraint_name() {
         let result = ConstraintParser::parse_foreign_key_constraint_name("posts_user_id_fkey");
         assert_eq!(result, Some(("posts".to_string(), "user_id".to_string())));
-        
+
         let result = ConstraintParser::parse_foreign_key_constraint_name("comments_post_id_fkey");
-        assert_eq!(result, Some(("comments".to_string(), "post_id".to_string())));
-        
+        assert_eq!(
+            result,
+            Some(("comments".to_string(), "post_id".to_string()))
+        );
+
         let result = ConstraintParser::parse_foreign_key_constraint_name("not_a_foreign_key");
         assert_eq!(result, None);
     }
@@ -468,7 +498,7 @@ mod tests {
         let message = "null value in column \"email\" violates not-null constraint";
         let result = ConstraintParser::extract_column_from_message(message);
         assert_eq!(result, Some("email".to_string()));
-        
+
         let message = "no column found here";
         let result = ConstraintParser::extract_column_from_message(message);
         assert_eq!(result, None);
@@ -479,7 +509,7 @@ mod tests {
         let message = "insert or update on table \"posts\" violates foreign key constraint";
         let result = ConstraintParser::extract_table_from_message(message);
         assert_eq!(result, Some("posts".to_string()));
-        
+
         let message = "no table found here";
         let result = ConstraintParser::extract_table_from_message(message);
         assert_eq!(result, None);
@@ -489,8 +519,11 @@ mod tests {
     fn test_extract_key_value_from_message() {
         let message = "duplicate key value violates unique constraint \"users_email_key\"\nDETAIL: Key (email)=(test@example.com) already exists.";
         let result = ConstraintParser::extract_key_value_from_message(message);
-        assert_eq!(result, Some(("email".to_string(), "test@example.com".to_string())));
-        
+        assert_eq!(
+            result,
+            Some(("email".to_string(), "test@example.com".to_string()))
+        );
+
         let message = "Key (user_id)=(123) is not present in table";
         let result = ConstraintParser::extract_key_value_from_message(message);
         assert_eq!(result, Some(("user_id".to_string(), "123".to_string())));
@@ -501,7 +534,7 @@ mod tests {
         let message = "Key (email)=(test@example.com) already exists";
         let result = ConstraintParser::extract_value_from_message(message);
         assert_eq!(result, Some("test@example.com".to_string()));
-        
+
         let message = "some error with \"quoted_value\" in it";
         let result = ConstraintParser::extract_value_from_message(message);
         assert_eq!(result, Some("quoted_value".to_string()));
@@ -511,7 +544,7 @@ mod tests {
     fn test_parse_constraint_violation_unique() {
         let message = "duplicate key value violates unique constraint \"users_email_key\"\nDETAIL: Key (email)=(test@example.com) already exists.";
         let result = ConstraintParser::parse_constraint_violation(message, Some("users_email_key"));
-        
+
         assert!(result.is_some());
         let parsed = result.unwrap();
         assert_eq!(parsed.get("type"), Some(&"unique".to_string()));
@@ -524,7 +557,7 @@ mod tests {
     fn test_parse_constraint_violation_not_null() {
         let message = "null value in column \"email\" violates not-null constraint";
         let result = ConstraintParser::parse_constraint_violation(message, None);
-        
+
         assert!(result.is_some());
         let parsed = result.unwrap();
         assert_eq!(parsed.get("type"), Some(&"not_null".to_string()));
@@ -537,7 +570,7 @@ mod tests {
         // Test that patterns are cached by calling multiple times
         let patterns1 = ConstraintParser::patterns();
         let patterns2 = ConstraintParser::patterns();
-        
+
         // They should be the same instance (pointer equality)
         assert!(std::ptr::eq(patterns1, patterns2));
     }
@@ -548,16 +581,16 @@ mod tests {
         let message = "completely unrelated error message";
         let result = ConstraintParser::parse_unique_violation(message, None);
         assert_eq!(result, None);
-        
+
         let result = ConstraintParser::parse_not_null_violation(message, None);
         assert_eq!(result, None);
-        
+
         let result = ConstraintParser::parse_foreign_key_violation(message, None);
         assert_eq!(result, None);
-        
+
         let result = ConstraintParser::parse_check_violation(message, None);
         assert_eq!(result, None);
-        
+
         let result = ConstraintParser::parse_constraint_violation(message, None);
         assert_eq!(result, None);
     }

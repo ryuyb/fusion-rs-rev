@@ -59,7 +59,7 @@ fn default_page_size() -> u32 {
 pub struct PagedResponse<T> {
     /// The data items for this page
     pub data: Vec<T>,
-    
+
     /// Pagination metadata
     pub pagination: PaginationMeta,
 }

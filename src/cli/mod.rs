@@ -6,16 +6,16 @@
 //! - Command execution and validation
 //! - Command handlers for serve and migrate operations
 
+pub mod config_merger;
+pub mod executor;
+pub mod handlers;
 pub mod parser;
 pub mod validation;
-pub mod config_merger;
-pub mod handlers;
-pub mod executor;
 
 // Re-export public types for convenience
-pub use parser::{Cli, Commands, Environment, LogLevel};
 pub use config_merger::ConfigurationMerger;
 pub use executor::execute_command;
+pub use parser::{Cli, Commands, Environment, LogLevel};
 
 use crate::config::settings::Settings;
 use crate::logger::init_logger;
@@ -59,13 +59,14 @@ pub fn load_and_merge_config(cli: &Cli) -> anyhow::Result<Settings> {
 ///
 /// # Errors
 /// Returns error if logger initialization fails
-pub fn init_logger_from_settings(settings: &Settings) -> anyhow::Result<crate::logger::LogLevelHandle> {
-    let logger_config = settings.logger.clone().into_logger_config()
-        .map_err(|e| {
-            eprintln!("Logger configuration error: {}", e);
-            std::process::exit(1);
-        })?;
-    
+pub fn init_logger_from_settings(
+    settings: &Settings,
+) -> anyhow::Result<crate::logger::LogLevelHandle> {
+    let logger_config = settings.logger.clone().into_logger_config().map_err(|e| {
+        eprintln!("Logger configuration error: {}", e);
+        std::process::exit(1);
+    })?;
+
     init_logger(logger_config).map_err(|e| {
         eprintln!("Logger initialization error: {}", e);
         std::process::exit(1);

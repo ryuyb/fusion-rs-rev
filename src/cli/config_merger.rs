@@ -3,10 +3,10 @@
 //! This module handles merging CLI argument overrides with file-based configuration,
 //! implementing the configuration precedence logic.
 
-use std::path::PathBuf;
-use crate::config::{ConfigLoader, settings::Settings};
-use crate::config::error::ConfigError;
 use super::parser::{Cli, Commands};
+use crate::config::error::ConfigError;
+use crate::config::{ConfigLoader, settings::Settings};
+use std::path::PathBuf;
 
 /// Configuration merger that handles CLI argument integration with file-based configuration
 ///
@@ -67,7 +67,7 @@ impl ConfigurationMerger {
             Err(e) => Err(ConfigError::ValidationError {
                 field: "config_file".to_string(),
                 message: format!("Cannot read configuration file '{}': {}", path.display(), e),
-            })
+            }),
         }
     }
 
@@ -77,16 +77,16 @@ impl ConfigurationMerger {
         unsafe {
             std::env::set_var("FUSION_CONFIG_FILE", path);
         }
-        
+
         // Create loader and load configuration
         let loader = ConfigLoader::new()?;
         let config = loader.load()?;
-        
+
         // Clean up environment variable
         unsafe {
             std::env::remove_var("FUSION_CONFIG_FILE");
         }
-        
+
         Ok(config)
     }
 
@@ -131,9 +131,18 @@ impl ConfigurationMerger {
     }
 
     /// Apply command-specific CLI argument overrides
-    fn apply_command_overrides(&self, config: &mut Settings, command: &Commands) -> Result<(), ConfigError> {
+    fn apply_command_overrides(
+        &self,
+        config: &mut Settings,
+        command: &Commands,
+    ) -> Result<(), ConfigError> {
         match command {
-            Commands::Serve { host, port, log_level, dry_run: _ } => {
+            Commands::Serve {
+                host,
+                port,
+                log_level,
+                dry_run: _,
+            } => {
                 // Override server host if provided
                 if let Some(host_addr) = host {
                     config.server.host = host_addr.clone();
@@ -149,7 +158,10 @@ impl ConfigurationMerger {
                     config.logger.level = level.clone().into();
                 }
             }
-            Commands::Migrate { dry_run: _, rollback: _ } => {
+            Commands::Migrate {
+                dry_run: _,
+                rollback: _,
+            } => {
                 // Migration commands don't override server configuration
             }
         }
@@ -166,8 +178,8 @@ impl ConfigurationMerger {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use clap::Parser;
     use crate::cli::parser::Cli;
+    use clap::Parser;
 
     fn create_valid_base_config() -> Settings {
         let mut config = Settings::default();
@@ -186,10 +198,10 @@ mod tests {
     fn test_configuration_merger_merge_verbose_flag() {
         let base_config = create_valid_base_config();
         let merger = ConfigurationMerger::new(base_config);
-        
-        let cli = Cli::try_parse_from(&["fusion-rs", "--verbose"]).unwrap();
+
+        let cli = Cli::try_parse_from(["fusion-rs", "--verbose"]).unwrap();
         let merged_config = merger.merge_cli_args(&cli).unwrap();
-        
+
         assert_eq!(merged_config.logger.level, "debug");
     }
 
@@ -197,10 +209,10 @@ mod tests {
     fn test_configuration_merger_merge_quiet_flag() {
         let base_config = create_valid_base_config();
         let merger = ConfigurationMerger::new(base_config);
-        
-        let cli = Cli::try_parse_from(&["fusion-rs", "--quiet"]).unwrap();
+
+        let cli = Cli::try_parse_from(["fusion-rs", "--quiet"]).unwrap();
         let merged_config = merger.merge_cli_args(&cli).unwrap();
-        
+
         assert_eq!(merged_config.logger.level, "error");
     }
 
@@ -208,10 +220,10 @@ mod tests {
     fn test_configuration_merger_merge_serve_host() {
         let base_config = create_valid_base_config();
         let merger = ConfigurationMerger::new(base_config);
-        
-        let cli = Cli::try_parse_from(&["fusion-rs", "serve", "--host", "0.0.0.0"]).unwrap();
+
+        let cli = Cli::try_parse_from(["fusion-rs", "serve", "--host", "0.0.0.0"]).unwrap();
         let merged_config = merger.merge_cli_args(&cli).unwrap();
-        
+
         assert_eq!(merged_config.server.host, "0.0.0.0");
     }
 
@@ -219,10 +231,10 @@ mod tests {
     fn test_configuration_merger_merge_serve_port() {
         let base_config = create_valid_base_config();
         let merger = ConfigurationMerger::new(base_config);
-        
-        let cli = Cli::try_parse_from(&["fusion-rs", "serve", "--port", "8080"]).unwrap();
+
+        let cli = Cli::try_parse_from(["fusion-rs", "serve", "--port", "8080"]).unwrap();
         let merged_config = merger.merge_cli_args(&cli).unwrap();
-        
+
         assert_eq!(merged_config.server.port, 8080);
     }
 
@@ -230,10 +242,11 @@ mod tests {
     fn test_configuration_merger_command_log_level_overrides_global() {
         let base_config = create_valid_base_config();
         let merger = ConfigurationMerger::new(base_config);
-        
-        let cli = Cli::try_parse_from(&["fusion-rs", "--verbose", "serve", "--log-level", "warn"]).unwrap();
+
+        let cli = Cli::try_parse_from(["fusion-rs", "--verbose", "serve", "--log-level", "warn"])
+            .unwrap();
         let merged_config = merger.merge_cli_args(&cli).unwrap();
-        
+
         assert_eq!(merged_config.logger.level, "warn");
     }
 }

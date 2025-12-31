@@ -1,0 +1,36 @@
+#!/bin/sh
+# Pre-commit hook: 自动运行 cargo fmt 和 cargo clippy
+
+echo "🔍 Running pre-commit checks..."
+echo ""
+
+# 1. 运行 cargo fmt 检查
+echo "📝 Checking code format..."
+if ! cargo fmt --all -- --check > /dev/null 2>&1; then
+    echo "⚠️  代码格式不符合规范,正在自动格式化..."
+    cargo fmt --all
+
+    # 将格式化后的文件添加到暂存区
+    git diff --name-only --cached | grep '\.rs$' | xargs git add 2>/dev/null
+
+    echo "✅ 代码已自动格式化并添加到暂存区"
+else
+    echo "✅ 代码格式检查通过"
+fi
+
+echo ""
+
+# 2. 运行 cargo clippy 检查
+echo "🔎 Running clippy..."
+if ! cargo clippy --all-targets --all-features -- -D warnings 2>&1; then
+    echo ""
+    echo "❌ Clippy 检查失败,请修复上述问题后再提交"
+    exit 1
+fi
+
+echo "✅ Clippy 检查通过"
+echo ""
+echo "🎉 所有检查通过,可以提交!"
+
+exit 0
+

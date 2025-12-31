@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
 use crate::state::AppState;
-use crate::utils::jwt::{validate_access_token, Claims};
+use crate::utils::jwt::{Claims, validate_access_token};
 
 /// Extension type for authenticated user information
 ///
@@ -112,15 +112,13 @@ pub async fn optional_auth_middleware(
     next: Next,
 ) -> Response {
     // Try to extract and validate token, but don't fail if missing
-    if let Some(auth_header) = request.headers().get(header::AUTHORIZATION) {
-        if let Ok(auth_str) = auth_header.to_str() {
-            if let Some(token) = auth_str.strip_prefix("Bearer ") {
-                if let Ok(claims) = validate_access_token(token, &state.jwt_config.secret) {
-                    let auth_user = AuthUser::from(claims);
-                    request.extensions_mut().insert(auth_user);
-                }
-            }
-        }
+    if let Some(auth_header) = request.headers().get(header::AUTHORIZATION)
+        && let Ok(auth_str) = auth_header.to_str()
+        && let Some(token) = auth_str.strip_prefix("Bearer ")
+        && let Ok(claims) = validate_access_token(token, &state.jwt_config.secret)
+    {
+        let auth_user = AuthUser::from(claims);
+        request.extensions_mut().insert(auth_user);
     }
 
     next.run(request).await
@@ -130,7 +128,7 @@ pub async fn optional_auth_middleware(
 mod tests {
     use super::*;
     use crate::config::JwtConfig;
-    use crate::utils::jwt::{generate_access_token, TokenType};
+    use crate::utils::jwt::{TokenType, generate_access_token};
 
     fn create_test_jwt_config() -> JwtConfig {
         JwtConfig {

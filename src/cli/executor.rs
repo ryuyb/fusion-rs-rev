@@ -3,10 +3,10 @@
 //! This module provides the main entry point for executing CLI commands
 //! after parsing and configuration loading.
 
+use super::handlers::{MigrateCommandHandler, ServeCommandHandler};
+use super::parser::{Cli, Commands};
 use crate::config::settings::Settings;
 use crate::error::AppResult;
-use super::parser::{Cli, Commands};
-use super::handlers::{ServeCommandHandler, MigrateCommandHandler};
 
 /// Execute a CLI command with the given settings
 ///
@@ -60,10 +60,18 @@ fn validate_command_args(cli: &Cli, _settings: &Settings) -> AppResult<()> {
     // Validate command-specific requirements
     if let Some(ref command) = cli.command {
         match command {
-            Commands::Serve { host, port, log_level: _, dry_run: _ } => {
+            Commands::Serve {
+                host,
+                port,
+                log_level: _,
+                dry_run: _,
+            } => {
                 validate_serve_args(host.as_ref(), *port)?;
             }
-            Commands::Migrate { dry_run: _, rollback } => {
+            Commands::Migrate {
+                dry_run: _,
+                rollback,
+            } => {
                 validate_migrate_args(*rollback)?;
             }
         }
@@ -78,7 +86,10 @@ fn validate_serve_args(host: Option<&String>, port: Option<u16>) -> AppResult<()
     if let (Some(host_addr), Some(port_num)) = (host, port) {
         // Warn about privileged ports
         if port_num < 1024 && host_addr == "0.0.0.0" {
-            eprintln!("Warning: Binding to 0.0.0.0 on port {} requires root privileges", port_num);
+            eprintln!(
+                "Warning: Binding to 0.0.0.0 on port {} requires root privileges",
+                port_num
+            );
         }
 
         // Validate that the host/port combination makes sense
@@ -93,10 +104,13 @@ fn validate_serve_args(host: Option<&String>, port: Option<u16>) -> AppResult<()
 /// Validate migrate command arguments
 fn validate_migrate_args(rollback: Option<u32>) -> AppResult<()> {
     // Additional validation for rollback steps
-    if let Some(steps) = rollback {
-        if steps > 50 {
-            eprintln!("Warning: Rolling back {} migrations is a large operation. Consider using smaller steps.", steps);
-        }
+    if let Some(steps) = rollback
+        && steps > 50
+    {
+        eprintln!(
+            "Warning: Rolling back {} migrations is a large operation. Consider using smaller steps.",
+            steps
+        );
     }
 
     Ok(())
@@ -116,27 +130,27 @@ mod tests {
 
     #[tokio::test]
     async fn test_execute_serve_dry_run() {
-        let cli = Cli::try_parse_from(&["fusion-rs", "serve", "--dry-run"]).unwrap();
+        let cli = Cli::try_parse_from(["fusion-rs", "serve", "--dry-run"]).unwrap();
         let config = create_valid_config();
-        
+
         let result = execute_command(&cli, config).await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_execute_serve_normal() {
-        let cli = Cli::try_parse_from(&["fusion-rs", "serve"]).unwrap();
+        let cli = Cli::try_parse_from(["fusion-rs", "serve"]).unwrap();
         let config = create_valid_config();
-        
+
         let result = execute_command(&cli, config).await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_validate_command_args() {
-        let cli = Cli::try_parse_from(&["fusion-rs", "serve", "--port", "8080"]).unwrap();
+        let cli = Cli::try_parse_from(["fusion-rs", "serve", "--port", "8080"]).unwrap();
         let config = create_valid_config();
-        
+
         let result = validate_command_args(&cli, &config);
         assert!(result.is_ok());
     }
@@ -154,7 +168,7 @@ mod tests {
             quiet: false,
         };
         let config = create_valid_config();
-        
+
         let result = validate_command_args(&cli, &config);
         assert!(result.is_err());
     }

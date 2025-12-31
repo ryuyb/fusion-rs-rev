@@ -1,7 +1,7 @@
 //! Tests for the advanced logger module
 
 use crate::logger::config::*;
-use crate::logger::writer::{RotatingFileWriter, RecoveryStrategy};
+use crate::logger::writer::{RecoveryStrategy, RotatingFileWriter};
 use std::path::PathBuf;
 
 #[cfg(test)]
@@ -124,8 +124,7 @@ mod property_tests {
             prop_assume!(!["trace", "debug", "info", "warn", "error"]
                 .contains(&invalid_level.to_lowercase().as_str()));
 
-            let mut config = LoggerConfig::default();
-            config.level = invalid_level;
+            let config = LoggerConfig { level: invalid_level, ..Default::default() };
 
             prop_assert!(config.validate().is_err());
         }
@@ -184,7 +183,6 @@ mod property_tests {
         }
     }
 }
-
 
 #[cfg(test)]
 mod core_property_tests {
@@ -427,13 +425,12 @@ mod core_property_tests {
     }
 }
 
-
 #[cfg(test)]
 mod dynamic_config_property_tests {
     use crate::logger::LogLevelHandle;
     use proptest::prelude::*;
     use std::sync::Arc;
-    use tracing_subscriber::{layer::SubscriberExt, reload, EnvFilter};
+    use tracing_subscriber::{EnvFilter, layer::SubscriberExt, reload};
 
     /// Helper to create a LogLevelHandle and run a test with a properly initialized subscriber
     fn with_test_handle<F, R>(initial_level: &str, f: F) -> R
@@ -442,16 +439,16 @@ mod dynamic_config_property_tests {
     {
         let filter = EnvFilter::try_new(initial_level).unwrap_or_else(|_| EnvFilter::new("info"));
         let (filter_layer, reload_handle) = reload::Layer::new(filter);
-        
+
         // Create a subscriber with the reload layer
         let subscriber = tracing_subscriber::registry()
             .with(filter_layer)
             .with(tracing_subscriber::fmt::layer().with_writer(std::io::sink));
-        
+
         let handle = LogLevelHandle {
             inner: Arc::new(reload_handle),
         };
-        
+
         // Run the test with the subscriber active
         tracing::subscriber::with_default(subscriber, || f(&handle))
     }
@@ -470,7 +467,7 @@ mod dynamic_config_property_tests {
 
             // Create a handle with a different initial level
             let initial_level = if level_idx == 0 { "info" } else { "trace" };
-            
+
             with_test_handle(initial_level, |handle| {
                 // Update to the new level should succeed
                 let result = handle.set_level(new_level);
@@ -501,7 +498,7 @@ mod dynamic_config_property_tests {
                 // Empty/whitespace levels may succeed (EnvFilter is permissive)
                 // or fail - the key is that it doesn't panic
                 let result = handle.set_level(&empty_level);
-                
+
                 // Whether it succeeds or fails, it should not panic
                 // and if it fails, the error should be descriptive
                 if let Err(err) = result {
@@ -524,7 +521,7 @@ mod dynamic_config_property_tests {
             level_indices in prop::collection::vec(0usize..5usize, 2..5)
         ) {
             let valid_levels = ["trace", "debug", "info", "warn", "error"];
-            
+
             with_test_handle("info", |handle| {
                 // Apply multiple level updates
                 for &idx in &level_indices {
@@ -576,8 +573,8 @@ mod error_handling_property_tests {
     use proptest::prelude::*;
     use std::fs;
     use std::io::Write;
-    use std::sync::atomic::{AtomicU32, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicU32, Ordering};
     use tempfile::tempdir;
 
     proptest! {
@@ -662,12 +659,12 @@ mod error_handling_property_tests {
                     let err_msg = err.to_string().to_lowercase();
                     // Error message should be descriptive
                     prop_assert!(
-                        err_msg.contains("permission") 
+                        err_msg.contains("permission")
                         || err_msg.contains("denied")
                         || err_msg.contains("access")
                         || err_msg.contains("not found")
                         || err_msg.contains("no such")
-                        || err_msg.len() > 0,
+                        || !err_msg.is_empty(),
                         "Error message should be descriptive: {}", err_msg
                     );
                 }

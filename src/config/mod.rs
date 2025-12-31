@@ -20,7 +20,4 @@ pub mod validation;
 // Re-export public types
 pub use environment::Environment;
 pub use loader::ConfigLoader;
-pub use settings::{
-    DatabaseConfig,
-    JwtConfig,
-};
+pub use settings::{DatabaseConfig, JwtConfig};

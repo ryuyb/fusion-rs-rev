@@ -12,8 +12,17 @@ pub struct LoginRequest {
     #[schema(example = "user@example.com", format = "email")]
     pub email: String,
     /// User's password (plain text)
-    #[validate(length(min = 6, max = 30, message = "Password must be between 6 and 30 characters"))]
-    #[schema(example = "password123", format = "password", min_length = 6, max_length = 30)]
+    #[validate(length(
+        min = 6,
+        max = 30,
+        message = "Password must be between 6 and 30 characters"
+    ))]
+    #[schema(
+        example = "password123",
+        format = "password",
+        min_length = 6,
+        max_length = 30
+    )]
     pub password: String,
 }
 
@@ -21,7 +30,11 @@ pub struct LoginRequest {
 #[derive(Debug, Deserialize, ToSchema, Validate)]
 pub struct RegisterRequest {
     /// Username (unique)
-    #[validate(length(min = 3, max = 20, message = "Username must be between 3 and 20 characters"))]
+    #[validate(length(
+        min = 3,
+        max = 20,
+        message = "Username must be between 3 and 20 characters"
+    ))]
     #[schema(example = "john_doe", min_length = 3, max_length = 20)]
     pub username: String,
     /// User's email address (unique)
@@ -29,8 +42,17 @@ pub struct RegisterRequest {
     #[schema(example = "user@example.com", format = "email")]
     pub email: String,
     /// User's password (plain text, will be hashed)
-    #[validate(length(min = 6, max = 30, message = "Password must be between 6 and 30 characters"))]
-    #[schema(example = "password123", format = "password", min_length = 6, max_length = 30)]
+    #[validate(length(
+        min = 6,
+        max = 30,
+        message = "Password must be between 6 and 30 characters"
+    ))]
+    #[schema(
+        example = "password123",
+        format = "password",
+        min_length = 6,
+        max_length = 30
+    )]
     pub password: String,
 }
 

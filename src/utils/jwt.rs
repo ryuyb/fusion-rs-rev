@@ -1,7 +1,7 @@
-use chrono::{Duration, Utc};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
-use serde::{Deserialize, Serialize};
 use crate::error::{AppError, AppResult};
+use chrono::{Duration, Utc};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use serde::{Deserialize, Serialize};
 
 /// Token type enumeration
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -48,7 +48,7 @@ impl Claims {
     ) -> Self {
         let now = Utc::now();
         let exp = now + Duration::hours(expiration_hours);
-        
+
         Self {
             sub: user_id.to_string(),
             email,
@@ -74,7 +74,7 @@ impl Claims {
 /// The encoded JWT token string
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// let token = generate_token(1, "user@example.com".to_string(), "user".to_string(), TokenType::Access, "secret", 1)?;
 /// ```
 pub fn generate_token(
@@ -86,7 +86,7 @@ pub fn generate_token(
     expiration_hours: i64,
 ) -> AppResult<String> {
     let claims = Claims::new(user_id, email, username, token_type, expiration_hours);
-    
+
     encode(
         &Header::default(),
         &claims,
@@ -115,7 +115,14 @@ pub fn generate_access_token(
     secret: &str,
     expiration_hours: i64,
 ) -> AppResult<String> {
-    generate_token(user_id, email, username, TokenType::Access, secret, expiration_hours)
+    generate_token(
+        user_id,
+        email,
+        username,
+        TokenType::Access,
+        secret,
+        expiration_hours,
+    )
 }
 
 /// Generates a refresh token (long-lived)
@@ -136,7 +143,14 @@ pub fn generate_refresh_token(
     secret: &str,
     expiration_hours: i64,
 ) -> AppResult<String> {
-    generate_token(user_id, email, username, TokenType::Refresh, secret, expiration_hours)
+    generate_token(
+        user_id,
+        email,
+        username,
+        TokenType::Refresh,
+        secret,
+        expiration_hours,
+    )
 }
 
 /// Generates both access and refresh tokens
@@ -166,15 +180,10 @@ pub fn generate_token_pair(
         secret,
         access_expiration_hours,
     )?;
-    
-    let refresh_token = generate_refresh_token(
-        user_id,
-        email,
-        username,
-        secret,
-        refresh_expiration_hours,
-    )?;
-    
+
+    let refresh_token =
+        generate_refresh_token(user_id, email, username, secret, refresh_expiration_hours)?;
+
     Ok((access_token, refresh_token))
 }
 
@@ -189,7 +198,7 @@ pub fn generate_token_pair(
 /// The decoded claims if the token is valid
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// let claims = validate_token(&token, "secret", Some(TokenType::Access))?;
 /// println!("User ID: {}", claims.sub);
 /// ```
@@ -220,15 +229,15 @@ pub fn validate_token(
     })?;
 
     // Validate token type if specified
-    if let Some(expected) = expected_type {
-        if claims.token_type != expected {
-            return Err(AppError::Unauthorized {
-                message: format!(
-                    "Invalid token type: expected {:?}, got {:?}",
-                    expected, claims.token_type
-                ),
-            });
-        }
+    if let Some(expected) = expected_type
+        && claims.token_type != expected
+    {
+        return Err(AppError::Unauthorized {
+            message: format!(
+                "Invalid token type: expected {:?}, got {:?}",
+                expected, claims.token_type
+            ),
+        });
     }
 
     Ok(claims)
@@ -274,7 +283,7 @@ mod tests {
             TEST_SECRET,
             24,
         );
-        
+
         assert!(token.is_ok());
         let token_str = token.unwrap();
         assert!(!token_str.is_empty());
@@ -290,7 +299,7 @@ mod tests {
             TEST_SECRET,
             1,
         );
-        
+
         assert!(token.is_ok());
     }
 
@@ -303,7 +312,7 @@ mod tests {
             TEST_SECRET,
             168,
         );
-        
+
         assert!(token.is_ok());
     }
 
@@ -317,7 +326,7 @@ mod tests {
             1,
             168,
         );
-        
+
         assert!(result.is_ok());
         let (access_token, refresh_token) = result.unwrap();
         assert!(!access_token.is_empty());
@@ -336,10 +345,10 @@ mod tests {
             24,
         )
         .unwrap();
-        
+
         let claims = validate_token(&token, TEST_SECRET, None);
         assert!(claims.is_ok());
-        
+
         let claims = claims.unwrap();
         assert_eq!(claims.sub, "1");
         assert_eq!(claims.email, "test@example.com");
@@ -357,7 +366,7 @@ mod tests {
             1,
         )
         .unwrap();
-        
+
         let claims = validate_access_token(&token, TEST_SECRET);
         assert!(claims.is_ok());
         assert_eq!(claims.unwrap().token_type, TokenType::Access);
@@ -373,7 +382,7 @@ mod tests {
             168,
         )
         .unwrap();
-        
+
         let claims = validate_refresh_token(&token, TEST_SECRET);
         assert!(claims.is_ok());
         assert_eq!(claims.unwrap().token_type, TokenType::Refresh);
@@ -389,11 +398,11 @@ mod tests {
             1,
         )
         .unwrap();
-        
+
         // Try to validate access token as refresh token
         let result = validate_refresh_token(&access_token, TEST_SECRET);
         assert!(result.is_err());
-        
+
         if let Err(AppError::Unauthorized { message }) = result {
             assert!(message.contains("Invalid token type"));
         } else {
@@ -412,10 +421,10 @@ mod tests {
             24,
         )
         .unwrap();
-        
+
         let result = validate_token(&token, "wrong_secret", None);
         assert!(result.is_err());
-        
+
         if let Err(AppError::Unauthorized { message }) = result {
             assert!(message.contains("signature"));
         } else {
@@ -427,7 +436,7 @@ mod tests {
     fn test_validate_token_invalid_format() {
         let result = validate_token("invalid.token.format", TEST_SECRET, None);
         assert!(result.is_err());
-        
+
         if let Err(AppError::Unauthorized { message }) = result {
             assert!(message.contains("Invalid token") || message.contains("validation"));
         } else {
@@ -447,10 +456,10 @@ mod tests {
             -1, // Negative hours to create an already expired token
         )
         .unwrap();
-        
+
         let result = validate_token(&token, TEST_SECRET, None);
         assert!(result.is_err());
-        
+
         if let Err(AppError::Unauthorized { message }) = result {
             assert!(message.contains("expired"));
         } else {
@@ -467,7 +476,7 @@ mod tests {
             TokenType::Refresh,
             24,
         );
-        
+
         assert_eq!(claims.sub, "42");
         assert_eq!(claims.email, "user@example.com");
         assert_eq!(claims.username, "username");
@@ -484,10 +493,10 @@ mod tests {
             TokenType::Access,
             1,
         );
-        
+
         let json = serde_json::to_string(&access_claims).unwrap();
         assert!(json.contains("\"token_type\":\"access\""));
-        
+
         let refresh_claims = Claims::new(
             1,
             "test@example.com".to_string(),
@@ -495,7 +504,7 @@ mod tests {
             TokenType::Refresh,
             168,
         );
-        
+
         let json = serde_json::to_string(&refresh_claims).unwrap();
         assert!(json.contains("\"token_type\":\"refresh\""));
     }

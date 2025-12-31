@@ -1,6 +1,6 @@
 //! Authentication handlers for login and token management.
 
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{Json, extract::State, http::StatusCode};
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
@@ -133,9 +133,12 @@ async fn refresh_token(
     let claims = validate_refresh_token(&payload.refresh_token, &state.jwt_config.secret)?;
 
     // Parse user ID from claims
-    let user_id: i32 = claims.sub.parse().map_err(|_| crate::error::AppError::Unauthorized {
-        message: "Invalid user ID in token".to_string(),
-    })?;
+    let user_id: i32 = claims
+        .sub
+        .parse()
+        .map_err(|_| crate::error::AppError::Unauthorized {
+            message: "Invalid user ID in token".to_string(),
+        })?;
 
     // Verify user still exists
     let user = state.services.users.get_user(user_id).await?;

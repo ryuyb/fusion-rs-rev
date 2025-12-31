@@ -39,7 +39,7 @@ impl AppState {
     pub fn new(pool: AsyncDbPool, jwt_config: JwtConfig) -> Self {
         let repos = Repositories::new(pool.clone());
         let services = Services::new(repos);
-        Self { 
+        Self {
             services,
             db_pool: pool,
             jwt_config,

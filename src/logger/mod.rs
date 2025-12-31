@@ -23,17 +23,11 @@ pub use config::*;
 
 use std::io::IsTerminal;
 use std::sync::Arc;
-use tracing_subscriber::{
-    fmt,
-    layer::SubscriberExt,
-    reload,
-    util::SubscriberInitExt,
-    EnvFilter,
-};
+use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, reload, util::SubscriberInitExt};
 use writer::RotatingFileWriter;
 
 /// Handle for modifying the log level at runtime
-/// 
+///
 /// This handle can be cloned and shared across threads safely.
 #[derive(Clone, Debug)]
 pub struct LogLevelHandle {
@@ -42,14 +36,14 @@ pub struct LogLevelHandle {
 
 impl LogLevelHandle {
     /// Modify the log level at runtime
-    /// 
+    ///
     /// # Arguments
     /// * `new_level` - The new log level string (e.g., "info", "debug", "warn,my_crate=trace")
-    /// 
+    ///
     /// # Returns
     /// * `Ok(())` if the level was successfully updated
     /// * `Err` if the level string is invalid
-    /// 
+    ///
     /// # Example
     /// ```ignore
     /// let handle = init_logger(config)?;
@@ -59,16 +53,16 @@ impl LogLevelHandle {
     pub fn set_level(&self, new_level: &str) -> anyhow::Result<()> {
         let new_filter = EnvFilter::try_new(new_level)
             .map_err(|e| anyhow::anyhow!("Invalid log level '{}': {}", new_level, e))?;
-        
+
         self.inner
             .modify(|filter| *filter = new_filter)
             .map_err(|e| anyhow::anyhow!("Failed to update log level: {}", e))?;
-        
+
         Ok(())
     }
 
     /// Get the current log level configuration
-    /// 
+    ///
     /// Note: This clones the current filter, which may be expensive for complex filters.
     pub fn current_level(&self) -> Option<String> {
         self.inner.with_current(|filter| filter.to_string()).ok()
@@ -76,19 +70,19 @@ impl LogLevelHandle {
 }
 
 /// Initialize the logger with the given configuration
-/// 
+///
 /// Returns a `LogLevelHandle` that can be used to modify the log level at runtime.
-/// 
+///
 /// # Example
 /// ```ignore
 /// use advanced_logger::{LoggerConfig, init_logger};
-/// 
+///
 /// let config = LoggerConfig::default();
 /// let handle = init_logger(config)?;
-/// 
+///
 /// // Log at info level
 /// tracing::info!("Starting application");
-/// 
+///
 /// // Later, change to debug level
 /// handle.set_level("debug")?;
 /// tracing::debug!("This will now be visible");
@@ -188,22 +182,48 @@ fn init_both(config: &LoggerConfig, filter: EnvFilter) -> anyhow::Result<LogLeve
         LogFormat::Full => {
             tracing_subscriber::registry()
                 .with(filter_layer)
-                .with(fmt::layer().with_ansi(false).with_target(true).with_writer(writer))
-                .with(fmt::layer().with_ansi(use_ansi).with_target(true).with_level(true))
+                .with(
+                    fmt::layer()
+                        .with_ansi(false)
+                        .with_target(true)
+                        .with_writer(writer),
+                )
+                .with(
+                    fmt::layer()
+                        .with_ansi(use_ansi)
+                        .with_target(true)
+                        .with_level(true),
+                )
                 .init();
         }
         LogFormat::Compact => {
             tracing_subscriber::registry()
                 .with(filter_layer)
-                .with(fmt::layer().with_ansi(false).with_target(true).compact().with_writer(writer))
-                .with(fmt::layer().with_ansi(use_ansi).with_target(true).with_level(true))
+                .with(
+                    fmt::layer()
+                        .with_ansi(false)
+                        .with_target(true)
+                        .compact()
+                        .with_writer(writer),
+                )
+                .with(
+                    fmt::layer()
+                        .with_ansi(use_ansi)
+                        .with_target(true)
+                        .with_level(true),
+                )
                 .init();
         }
         LogFormat::Json => {
             tracing_subscriber::registry()
                 .with(filter_layer)
                 .with(fmt::layer().with_ansi(false).json().with_writer(writer))
-                .with(fmt::layer().with_ansi(use_ansi).with_target(true).with_level(true))
+                .with(
+                    fmt::layer()
+                        .with_ansi(use_ansi)
+                        .with_target(true)
+                        .with_level(true),
+                )
                 .init();
         }
     }

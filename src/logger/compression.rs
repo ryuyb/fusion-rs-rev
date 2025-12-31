@@ -1,7 +1,7 @@
 //! File compression support for the advanced logger
 
-use flate2::write::GzEncoder;
 use flate2::Compression;
+use flate2::write::GzEncoder;
 use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
@@ -17,7 +17,7 @@ impl CompressionHandler {
     }
 
     /// Compress a file using gzip compression
-    /// 
+    ///
     /// Uses streaming compression to handle large files efficiently without
     /// loading the entire file into memory.
     pub fn compress_file(&self, file_path: &Path) -> anyhow::Result<()> {
@@ -38,11 +38,11 @@ impl CompressionHandler {
         {
             let input_file = File::open(file_path)?;
             let input_reader = BufReader::new(input_file);
-            
+
             let output_file = File::create(&compressed_path)?;
             let output_writer = BufWriter::new(output_file);
             let mut encoder = GzEncoder::new(output_writer, Compression::default());
-            
+
             std::io::copy(&mut BufReader::new(input_reader), &mut encoder)?;
             encoder.finish()?.flush()?;
         }

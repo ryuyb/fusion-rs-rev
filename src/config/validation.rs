@@ -4,7 +4,9 @@
 //! to ensure configuration values are within acceptable ranges and formats.
 
 use crate::config::error::ConfigError;
-use crate::config::settings::{DatabaseConfig, FileSettings, LoggerSettings, ServerConfig, Settings};
+use crate::config::settings::{
+    DatabaseConfig, FileSettings, LoggerSettings, ServerConfig, Settings,
+};
 
 /// Valid log levels
 const VALID_LOG_LEVELS: &[&str] = &["trace", "debug", "info", "warn", "error"];
@@ -118,7 +120,9 @@ impl DatabaseConfig {
             "sqlite:",
         ];
 
-        valid_schemes.iter().any(|scheme| self.url.starts_with(scheme))
+        valid_schemes
+            .iter()
+            .any(|scheme| self.url.starts_with(scheme))
     }
 }
 
@@ -223,7 +227,9 @@ mod tests {
             ..Default::default()
         };
         let err = config.validate().unwrap_err();
-        assert!(matches!(err, ConfigError::ValidationError { field, .. } if field == "server.port"));
+        assert!(
+            matches!(err, ConfigError::ValidationError { field, .. } if field == "server.port")
+        );
     }
 
     #[test]
@@ -250,7 +256,9 @@ mod tests {
             ..Default::default()
         };
         let err = config.validate().unwrap_err();
-        assert!(matches!(err, ConfigError::ValidationError { field, .. } if field == "server.request_timeout"));
+        assert!(
+            matches!(err, ConfigError::ValidationError { field, .. } if field == "server.request_timeout")
+        );
     }
 
     #[test]
@@ -260,7 +268,9 @@ mod tests {
             ..Default::default()
         };
         let err = config.validate().unwrap_err();
-        assert!(matches!(err, ConfigError::ValidationError { field, .. } if field == "server.keep_alive_timeout"));
+        assert!(
+            matches!(err, ConfigError::ValidationError { field, .. } if field == "server.keep_alive_timeout")
+        );
     }
 
     // ========================================================================
@@ -280,7 +290,9 @@ mod tests {
     fn test_database_config_empty_url() {
         let config = DatabaseConfig::default();
         let err = config.validate().unwrap_err();
-        assert!(matches!(err, ConfigError::ValidationError { field, .. } if field == "database.url"));
+        assert!(
+            matches!(err, ConfigError::ValidationError { field, .. } if field == "database.url")
+        );
     }
 
     #[test]
@@ -290,7 +302,9 @@ mod tests {
             ..Default::default()
         };
         let err = config.validate().unwrap_err();
-        assert!(matches!(err, ConfigError::ValidationError { field, .. } if field == "database.url"));
+        assert!(
+            matches!(err, ConfigError::ValidationError { field, .. } if field == "database.url")
+        );
     }
 
     #[test]
@@ -320,7 +334,9 @@ mod tests {
             ..Default::default()
         };
         let err = config.validate().unwrap_err();
-        assert!(matches!(err, ConfigError::ValidationError { field, .. } if field == "database.max_connections"));
+        assert!(
+            matches!(err, ConfigError::ValidationError { field, .. } if field == "database.max_connections")
+        );
     }
 
     #[test]
@@ -331,7 +347,9 @@ mod tests {
             ..Default::default()
         };
         let err = config.validate().unwrap_err();
-        assert!(matches!(err, ConfigError::ValidationError { field, .. } if field == "database.min_connections"));
+        assert!(
+            matches!(err, ConfigError::ValidationError { field, .. } if field == "database.min_connections")
+        );
     }
 
     #[test]
@@ -343,7 +361,9 @@ mod tests {
             ..Default::default()
         };
         let err = config.validate().unwrap_err();
-        assert!(matches!(err, ConfigError::ValidationError { field, .. } if field == "database.min_connections"));
+        assert!(
+            matches!(err, ConfigError::ValidationError { field, .. } if field == "database.min_connections")
+        );
     }
 
     // ========================================================================
@@ -365,7 +385,11 @@ mod tests {
                 level: level.to_string(),
                 ..Default::default()
             };
-            assert!(settings.validate().is_ok(), "Level should be valid: {}", level);
+            assert!(
+                settings.validate().is_ok(),
+                "Level should be valid: {}",
+                level
+            );
         }
     }
 
@@ -376,7 +400,9 @@ mod tests {
             ..Default::default()
         };
         let err = settings.validate().unwrap_err();
-        assert!(matches!(err, ConfigError::ValidationError { field, .. } if field == "logger.level"));
+        assert!(
+            matches!(err, ConfigError::ValidationError { field, .. } if field == "logger.level")
+        );
     }
 
     #[test]
@@ -390,7 +416,9 @@ mod tests {
             ..Default::default()
         };
         let err = settings.validate().unwrap_err();
-        assert!(matches!(err, ConfigError::ValidationError { field, .. } if field == "logger.file.path"));
+        assert!(
+            matches!(err, ConfigError::ValidationError { field, .. } if field == "logger.file.path")
+        );
     }
 
     #[test]
@@ -416,7 +444,9 @@ mod tests {
             ..Default::default()
         };
         let err = settings.validate().unwrap_err();
-        assert!(matches!(err, ConfigError::ValidationError { field, .. } if field == "logger.file.format"));
+        assert!(
+            matches!(err, ConfigError::ValidationError { field, .. } if field == "logger.file.format")
+        );
     }
 
     #[test]
@@ -431,7 +461,11 @@ mod tests {
                 },
                 ..Default::default()
             };
-            assert!(settings.validate().is_ok(), "Format should be valid: {}", format);
+            assert!(
+                settings.validate().is_ok(),
+                "Format should be valid: {}",
+                format
+            );
         }
     }
 
@@ -448,7 +482,9 @@ mod tests {
             ..Default::default()
         };
         let err = settings.validate().unwrap_err();
-        assert!(matches!(err, ConfigError::ValidationError { field, .. } if field == "logger.file.rotation.strategy"));
+        assert!(
+            matches!(err, ConfigError::ValidationError { field, .. } if field == "logger.file.rotation.strategy")
+        );
     }
 
     // ========================================================================
@@ -481,14 +517,18 @@ mod tests {
             ..Default::default()
         };
         let err = settings.validate().unwrap_err();
-        assert!(matches!(err, ConfigError::ValidationError { field, .. } if field == "server.port"));
+        assert!(
+            matches!(err, ConfigError::ValidationError { field, .. } if field == "server.port")
+        );
     }
 
     #[test]
     fn test_settings_invalid_database() {
         let settings = Settings::default();
         let err = settings.validate().unwrap_err();
-        assert!(matches!(err, ConfigError::ValidationError { field, .. } if field == "database.url"));
+        assert!(
+            matches!(err, ConfigError::ValidationError { field, .. } if field == "database.url")
+        );
     }
 
     #[test]
@@ -505,6 +545,8 @@ mod tests {
             ..Default::default()
         };
         let err = settings.validate().unwrap_err();
-        assert!(matches!(err, ConfigError::ValidationError { field, .. } if field == "logger.level"));
+        assert!(
+            matches!(err, ConfigError::ValidationError { field, .. } if field == "logger.level")
+        );
     }
 }

@@ -12,14 +12,27 @@ use validator::Validate;
 /// Request body for creating a new user.
 #[derive(Debug, Deserialize, ToSchema, Validate)]
 pub struct CreateUserRequest {
-    #[validate(length(min = 3, max = 20, message = "Username must be between 3 and 20 characters"))]
+    #[validate(length(
+        min = 3,
+        max = 20,
+        message = "Username must be between 3 and 20 characters"
+    ))]
     #[schema(min_length = 3, max_length = 20, example = "john_doe")]
     pub username: String,
     #[validate(email(message = "Invalid email format"))]
     #[schema(format = "email", example = "john@example.com")]
     pub email: String,
-    #[validate(length(min = 6, max = 30, message = "Password must be between 6 and 30 characters"))]
-    #[schema(format = "password", min_length = 6, max_length = 30, example = "password123")]
+    #[validate(length(
+        min = 6,
+        max = 30,
+        message = "Password must be between 6 and 30 characters"
+    ))]
+    #[schema(
+        format = "password",
+        min_length = 6,
+        max_length = 30,
+        example = "password123"
+    )]
     pub password: String,
 }
 
@@ -37,13 +50,21 @@ impl CreateUserRequest {
 /// Request body for updating a user.
 #[derive(Debug, Deserialize, ToSchema, Validate)]
 pub struct UpdateUserRequest {
-    #[validate(length(min = 3, max = 20, message = "Username must be between 3 and 20 characters"))]
+    #[validate(length(
+        min = 3,
+        max = 20,
+        message = "Username must be between 3 and 20 characters"
+    ))]
     #[schema(example = "jane_doe")]
     pub username: Option<String>,
     #[validate(email(message = "Invalid email format"))]
     #[schema(format = "email", example = "jane@example.com")]
     pub email: Option<String>,
-    #[validate(length(min = 6, max = 30, message = "Password must be between 6 and 30 characters"))]
+    #[validate(length(
+        min = 6,
+        max = 30,
+        message = "Password must be between 6 and 30 characters"
+    ))]
     #[schema(format = "password", example = "newpassword123")]
     pub password: Option<String>,
 }

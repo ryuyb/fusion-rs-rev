@@ -3,14 +3,16 @@
 //! Provides HTTP handlers for user management operations.
 
 use crate::api::doc::USER_TAG;
-use crate::api::dto::{CreateUserRequest, PagedResponse, PaginationParams, UpdateUserRequest, UserResponse};
+use crate::api::dto::{
+    CreateUserRequest, PagedResponse, PaginationParams, UpdateUserRequest, UserResponse,
+};
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
 use crate::utils::validate::{ValidatedJson, ValidatedQuery};
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
-    Json,
 };
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -52,14 +54,15 @@ async fn list_users(
     ValidatedQuery(params): ValidatedQuery<PaginationParams>,
 ) -> AppResult<Json<PagedResponse<UserResponse>>> {
     let params = params.normalize();
-    let (users, total_count) = state.services.users.list_users_paginated(
-        params.offset() as i64,
-        params.limit() as i64,
-    ).await?;
-    
+    let (users, total_count) = state
+        .services
+        .users
+        .list_users_paginated(params.offset() as i64, params.limit() as i64)
+        .await?;
+
     let responses: Vec<UserResponse> = users.into_iter().map(UserResponse::from).collect();
     let paged_response = PagedResponse::new(responses, &params, total_count as u64);
-    
+
     Ok(Json(paged_response))
 }
 

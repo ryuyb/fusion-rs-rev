@@ -1,5 +1,5 @@
-use diesel::result::{DatabaseErrorKind, Error as DieselError};
 use crate::error::{AppError, ConstraintParser};
+use diesel::result::{DatabaseErrorKind, Error as DieselError};
 
 /// Utility for converting database errors to structured AppError variants.
 ///
@@ -53,17 +53,28 @@ impl DatabaseErrorConverter {
 
         match kind {
             DatabaseErrorKind::UniqueViolation => {
-                if let Some((entity, field, value)) = ConstraintParser::parse_unique_violation(message, constraint_name) {
-                    AppError::Duplicate { entity, field, value }
+                if let Some((entity, field, value)) =
+                    ConstraintParser::parse_unique_violation(message, constraint_name)
+                {
+                    AppError::Duplicate {
+                        entity,
+                        field,
+                        value,
+                    }
                 } else {
                     AppError::Database {
                         operation: operation.to_string(),
-                        source: anyhow::Error::msg(format!("Unique constraint violation: {}", message)),
+                        source: anyhow::Error::msg(format!(
+                            "Unique constraint violation: {}",
+                            message
+                        )),
                     }
                 }
             }
             DatabaseErrorKind::NotNullViolation => {
-                if let Some((entity, field)) = ConstraintParser::parse_not_null_violation(message, constraint_name) {
+                if let Some((entity, field)) =
+                    ConstraintParser::parse_not_null_violation(message, constraint_name)
+                {
                     AppError::Validation {
                         field,
                         reason: format!("Field is required for {}", entity),
@@ -71,25 +82,38 @@ impl DatabaseErrorConverter {
                 } else {
                     AppError::Database {
                         operation: operation.to_string(),
-                        source: anyhow::Error::msg(format!("Not null constraint violation: {}", message)),
+                        source: anyhow::Error::msg(format!(
+                            "Not null constraint violation: {}",
+                            message
+                        )),
                     }
                 }
             }
             DatabaseErrorKind::ForeignKeyViolation => {
-                if let Some((entity, field, referenced_value)) = ConstraintParser::parse_foreign_key_violation(message, constraint_name) {
+                if let Some((entity, field, referenced_value)) =
+                    ConstraintParser::parse_foreign_key_violation(message, constraint_name)
+                {
                     AppError::Validation {
                         field,
-                        reason: format!("Invalid reference to {} with value '{}'", entity, referenced_value),
+                        reason: format!(
+                            "Invalid reference to {} with value '{}'",
+                            entity, referenced_value
+                        ),
                     }
                 } else {
                     AppError::Database {
                         operation: operation.to_string(),
-                        source: anyhow::Error::msg(format!("Foreign key constraint violation: {}", message)),
+                        source: anyhow::Error::msg(format!(
+                            "Foreign key constraint violation: {}",
+                            message
+                        )),
                     }
                 }
             }
             DatabaseErrorKind::CheckViolation => {
-                if let Some((entity, field)) = ConstraintParser::parse_check_violation(message, constraint_name) {
+                if let Some((entity, field)) =
+                    ConstraintParser::parse_check_violation(message, constraint_name)
+                {
                     AppError::Validation {
                         field,
                         reason: format!("Check constraint failed for {} field", entity),
@@ -97,7 +121,10 @@ impl DatabaseErrorConverter {
                 } else {
                     AppError::Database {
                         operation: operation.to_string(),
-                        source: anyhow::Error::msg(format!("Check constraint violation: {}", message)),
+                        source: anyhow::Error::msg(format!(
+                            "Check constraint violation: {}",
+                            message
+                        )),
                     }
                 }
             }
@@ -154,9 +181,13 @@ mod tests {
     fn test_convert_not_found_error() {
         let error = DieselError::NotFound;
         let result = DatabaseErrorConverter::convert_diesel_error(error, "find user");
-        
+
         match result {
-            AppError::NotFound { entity, field, value } => {
+            AppError::NotFound {
+                entity,
+                field,
+                value,
+            } => {
                 assert_eq!(entity, "resource");
                 assert_eq!(field, "id");
                 assert_eq!(value, "unknown");
@@ -171,16 +202,17 @@ mod tests {
             message: "duplicate key value violates unique constraint \"users_email_key\"\nDETAIL: Key (email)=(test@example.com) already exists.".to_string(),
             constraint_name: Some("users_email_key".to_string()),
         };
-        
-        let error = DieselError::DatabaseError(
-            DatabaseErrorKind::UniqueViolation,
-            Box::new(info),
-        );
-        
+
+        let error = DieselError::DatabaseError(DatabaseErrorKind::UniqueViolation, Box::new(info));
+
         let result = DatabaseErrorConverter::convert_diesel_error(error, "insert user");
-        
+
         match result {
-            AppError::Duplicate { entity, field, value } => {
+            AppError::Duplicate {
+                entity,
+                field,
+                value,
+            } => {
                 assert_eq!(entity, "users");
                 assert_eq!(field, "email");
                 assert_eq!(value, "test@example.com");
@@ -195,14 +227,11 @@ mod tests {
             message: "null value in column \"email\" violates not-null constraint".to_string(),
             constraint_name: None,
         };
-        
-        let error = DieselError::DatabaseError(
-            DatabaseErrorKind::NotNullViolation,
-            Box::new(info),
-        );
-        
+
+        let error = DieselError::DatabaseError(DatabaseErrorKind::NotNullViolation, Box::new(info));
+
         let result = DatabaseErrorConverter::convert_diesel_error(error, "insert user");
-        
+
         match result {
             AppError::Validation { field, reason } => {
                 assert_eq!(field, "email");
@@ -216,7 +245,7 @@ mod tests {
     fn test_parse_constraint_name() {
         let result = ConstraintParser::parse_constraint_name("users_email_key");
         assert_eq!(result, Some(("users".to_string(), "email".to_string())));
-        
+
         let result = ConstraintParser::parse_constraint_name("posts_user_id_fkey");
         assert_eq!(result, Some(("posts".to_string(), "user".to_string())));
     }
@@ -225,7 +254,10 @@ mod tests {
     fn test_extract_key_value_from_message() {
         let message = "duplicate key value violates unique constraint \"users_email_key\"\nDETAIL: Key (email)=(test@example.com) already exists.";
         let result = ConstraintParser::extract_key_value_from_message(message);
-        assert_eq!(result, Some(("email".to_string(), "test@example.com".to_string())));
+        assert_eq!(
+            result,
+            Some(("email".to_string(), "test@example.com".to_string()))
+        );
     }
 
     #[test]
@@ -239,9 +271,12 @@ mod tests {
     fn test_parse_foreign_key_constraint_name() {
         let result = ConstraintParser::parse_foreign_key_constraint_name("posts_user_id_fkey");
         assert_eq!(result, Some(("posts".to_string(), "user_id".to_string())));
-        
+
         let result = ConstraintParser::parse_foreign_key_constraint_name("comments_post_id_fkey");
-        assert_eq!(result, Some(("comments".to_string(), "post_id".to_string())));
+        assert_eq!(
+            result,
+            Some(("comments".to_string(), "post_id".to_string()))
+        );
     }
 
     #[test]
@@ -250,14 +285,12 @@ mod tests {
             message: "insert or update on table \"posts\" violates foreign key constraint \"posts_user_id_fkey\"\nDETAIL: Key (user_id)=(999) is not present in table \"users\".".to_string(),
             constraint_name: Some("posts_user_id_fkey".to_string()),
         };
-        
-        let error = DieselError::DatabaseError(
-            DatabaseErrorKind::ForeignKeyViolation,
-            Box::new(info),
-        );
-        
+
+        let error =
+            DieselError::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, Box::new(info));
+
         let result = DatabaseErrorConverter::convert_diesel_error(error, "insert post");
-        
+
         match result {
             AppError::Validation { field, reason } => {
                 assert_eq!(field, "user_id");
@@ -271,17 +304,15 @@ mod tests {
     #[test]
     fn test_convert_check_violation() {
         let info = MockDatabaseErrorInfo {
-            message: "new row for relation \"users\" violates check constraint \"users_age_check\"".to_string(),
+            message: "new row for relation \"users\" violates check constraint \"users_age_check\""
+                .to_string(),
             constraint_name: Some("users_age_check".to_string()),
         };
-        
-        let error = DieselError::DatabaseError(
-            DatabaseErrorKind::CheckViolation,
-            Box::new(info),
-        );
-        
+
+        let error = DieselError::DatabaseError(DatabaseErrorKind::CheckViolation, Box::new(info));
+
         let result = DatabaseErrorConverter::convert_diesel_error(error, "insert user");
-        
+
         match result {
             AppError::Validation { field, reason } => {
                 assert_eq!(field, "age");

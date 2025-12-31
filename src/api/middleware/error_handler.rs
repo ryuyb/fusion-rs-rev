@@ -6,9 +6,9 @@
 //! and request ID extraction for correlation.
 
 use axum::{
+    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use serde_json::json;
 
@@ -38,11 +38,19 @@ impl IntoResponse for AppError {
     /// - 7.3-7.4: Include request ID when available for correlation
     fn into_response(self) -> Response {
         let (status, error_response) = match &self {
-            AppError::NotFound { entity, field, value } => (
+            AppError::NotFound {
+                entity,
+                field,
+                value,
+            } => (
                 StatusCode::NOT_FOUND,
                 ErrorResponse::not_found_error(entity, field, value),
             ),
-            AppError::Duplicate { entity, field, value } => (
+            AppError::Duplicate {
+                entity,
+                field,
+                value,
+            } => (
                 StatusCode::CONFLICT,
                 ErrorResponse::duplicate_error(entity, field, value),
             ),
@@ -59,7 +67,10 @@ impl IntoResponse for AppError {
                 });
 
                 let message = if errors.len() == 1 {
-                    format!("Validation failed for {}: {}", errors[0].field, errors[0].message)
+                    format!(
+                        "Validation failed for {}: {}",
+                        errors[0].field, errors[0].message
+                    )
                 } else {
                     format!("Validation failed for {} field(s)", errors.len())
                 };
@@ -68,7 +79,7 @@ impl IntoResponse for AppError {
                     StatusCode::UNPROCESSABLE_ENTITY,
                     ErrorResponse::new("VALIDATION_ERRORS", &message).with_details(details),
                 )
-            },
+            }
             AppError::BadRequest { message } => (
                 StatusCode::BAD_REQUEST,
                 ErrorResponse::new("BAD_REQUEST", message),
@@ -99,11 +110,12 @@ impl IntoResponse for AppError {
                     ErrorResponse::new(
                         "DATABASE_ERROR",
                         &format!("Database operation failed: {}", operation),
-                    ).with_details(json!({
+                    )
+                    .with_details(json!({
                         "operation": operation
                     })),
                 )
-            },
+            }
             AppError::Configuration { key, source } => {
                 // Log 500 error with full details including error chain
                 // Note: Set RUST_BACKTRACE=1 or RUST_LIB_BACKTRACE=1 to capture backtraces
@@ -118,11 +130,12 @@ impl IntoResponse for AppError {
                     ErrorResponse::new(
                         "CONFIGURATION_ERROR",
                         &format!("Configuration error: {}", key),
-                    ).with_details(json!({
+                    )
+                    .with_details(json!({
                         "key": key
                     })),
                 )
-            },
+            }
             AppError::ConnectionPool { source } => {
                 // Log connection pool error with full details including error chain
                 // Note: Set RUST_BACKTRACE=1 or RUST_LIB_BACKTRACE=1 to capture backtraces
@@ -133,12 +146,9 @@ impl IntoResponse for AppError {
                 );
                 (
                     StatusCode::SERVICE_UNAVAILABLE,
-                    ErrorResponse::new(
-                        "SERVICE_UNAVAILABLE",
-                        "Database connection unavailable",
-                    ),
+                    ErrorResponse::new("SERVICE_UNAVAILABLE", "Database connection unavailable"),
                 )
-            },
+            }
             AppError::Internal { source } => {
                 // Log 500 error with full details including error chain
                 // Note: Set RUST_BACKTRACE=1 or RUST_LIB_BACKTRACE=1 to capture backtraces
@@ -149,12 +159,9 @@ impl IntoResponse for AppError {
                 );
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    ErrorResponse::new(
-                        "INTERNAL_ERROR",
-                        "An internal error occurred",
-                    ),
+                    ErrorResponse::new("INTERNAL_ERROR", "An internal error occurred"),
                 )
-            },
+            }
         };
 
         (status, Json(error_response)).into_response()
@@ -171,31 +178,36 @@ pub async fn global_error_handler(
     next: axum::middleware::Next,
 ) -> Response {
     let response = next.run(request).await;
-    
+
     // If the response status indicates an error and doesn't have a JSON body,
     // convert it to our standard ErrorResponse format
     if response.status().is_client_error() || response.status().is_server_error() {
         let status = response.status();
-        
+
         // Check if the response already has a JSON content type
-        if let Some(content_type) = response.headers().get("content-type") {
-            if content_type.to_str().unwrap_or("").contains("application/json") {
-                // Already has JSON response, return as-is
-                return response;
-            }
+        if let Some(content_type) = response.headers().get("content-type")
+            && content_type
+                .to_str()
+                .unwrap_or("")
+                .contains("application/json")
+        {
+            // Already has JSON response, return as-is
+            return response;
         }
-        
+
         // Try to extract error message from the original response body
         let (_parts, body) = response.into_parts();
-        let body_bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap_or_else(|_| axum::body::Bytes::new());
-        
+        let body_bytes = axum::body::to_bytes(body, usize::MAX)
+            .await
+            .unwrap_or_else(|_| axum::body::Bytes::new());
+
         // Try to extract error message from body
         let original_message = if !body_bytes.is_empty() {
             String::from_utf8_lossy(&body_bytes).trim().to_string()
         } else {
             String::new()
         };
-        
+
         // Convert to our standard error format, using original message if available
         let error_response = match status {
             StatusCode::BAD_REQUEST => {
@@ -205,7 +217,7 @@ pub async fn global_error_handler(
                     format!("Bad request: {}", original_message)
                 };
                 ErrorResponse::new("BAD_REQUEST", &message)
-            },
+            }
             StatusCode::NOT_FOUND => {
                 let message = if original_message.is_empty() {
                     "The requested resource was not found".to_string()
@@ -213,7 +225,7 @@ pub async fn global_error_handler(
                     original_message
                 };
                 ErrorResponse::new("NOT_FOUND", &message)
-            },
+            }
             StatusCode::METHOD_NOT_ALLOWED => {
                 let message = if original_message.is_empty() {
                     "HTTP method not allowed for this endpoint".to_string()
@@ -221,7 +233,7 @@ pub async fn global_error_handler(
                     original_message
                 };
                 ErrorResponse::new("METHOD_NOT_ALLOWED", &message)
-            },
+            }
             StatusCode::UNSUPPORTED_MEDIA_TYPE => {
                 let message = if original_message.is_empty() {
                     "Unsupported media type".to_string()
@@ -229,7 +241,7 @@ pub async fn global_error_handler(
                     original_message
                 };
                 ErrorResponse::new("UNSUPPORTED_MEDIA_TYPE", &message)
-            },
+            }
             StatusCode::REQUEST_TIMEOUT => {
                 let message = if original_message.is_empty() {
                     "Request timeout".to_string()
@@ -237,7 +249,7 @@ pub async fn global_error_handler(
                     original_message
                 };
                 ErrorResponse::new("REQUEST_TIMEOUT", &message)
-            },
+            }
             StatusCode::PAYLOAD_TOO_LARGE => {
                 let message = if original_message.is_empty() {
                     "Request payload too large".to_string()
@@ -245,7 +257,7 @@ pub async fn global_error_handler(
                     original_message
                 };
                 ErrorResponse::new("PAYLOAD_TOO_LARGE", &message)
-            },
+            }
             StatusCode::INTERNAL_SERVER_ERROR => {
                 // Log 500 errors with original message
                 // Note: For errors with backtrace support, set RUST_BACKTRACE=1 or RUST_LIB_BACKTRACE=1
@@ -261,7 +273,7 @@ pub async fn global_error_handler(
                     format!("Internal server error: {}", original_message)
                 };
                 ErrorResponse::new("INTERNAL_SERVER_ERROR", &message)
-            },
+            }
             StatusCode::BAD_GATEWAY => {
                 let message = if original_message.is_empty() {
                     "Bad gateway".to_string()
@@ -269,7 +281,7 @@ pub async fn global_error_handler(
                     original_message
                 };
                 ErrorResponse::new("BAD_GATEWAY", &message)
-            },
+            }
             StatusCode::SERVICE_UNAVAILABLE => {
                 let message = if original_message.is_empty() {
                     "Service temporarily unavailable".to_string()
@@ -277,7 +289,7 @@ pub async fn global_error_handler(
                     original_message
                 };
                 ErrorResponse::new("SERVICE_UNAVAILABLE", &message)
-            },
+            }
             StatusCode::GATEWAY_TIMEOUT => {
                 let message = if original_message.is_empty() {
                     "Gateway timeout".to_string()
@@ -285,7 +297,7 @@ pub async fn global_error_handler(
                     original_message
                 };
                 ErrorResponse::new("GATEWAY_TIMEOUT", &message)
-            },
+            }
             _ => {
                 let message = if original_message.is_empty() {
                     "An unknown error occurred".to_string()
@@ -293,9 +305,9 @@ pub async fn global_error_handler(
                     format!("Error: {}", original_message)
                 };
                 ErrorResponse::new("UNKNOWN_ERROR", &message)
-            },
+            }
         };
-        
+
         (status, Json(error_response)).into_response()
     } else {
         response
@@ -394,7 +406,10 @@ mod tests {
         let error = AppError::UnprocessableContent {
             message: "Cannot process request".to_string(),
         };
-        assert_eq!(error_to_status_code(&error), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(
+            error_to_status_code(&error),
+            StatusCode::UNPROCESSABLE_ENTITY
+        );
         assert_eq!(error_to_code(&error), "UNPROCESSABLE_CONTENT");
     }
 
@@ -422,7 +437,10 @@ mod tests {
             operation: "insert user".to_string(),
             source: anyhow::anyhow!("Connection failed"),
         };
-        assert_eq!(error_to_status_code(&error), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            error_to_status_code(&error),
+            StatusCode::INTERNAL_SERVER_ERROR
+        );
         assert_eq!(error_to_code(&error), "DATABASE_ERROR");
     }
 
@@ -432,7 +450,10 @@ mod tests {
             key: "database_url".to_string(),
             source: anyhow::anyhow!("Missing config"),
         };
-        assert_eq!(error_to_status_code(&error), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            error_to_status_code(&error),
+            StatusCode::INTERNAL_SERVER_ERROR
+        );
         assert_eq!(error_to_code(&error), "CONFIGURATION_ERROR");
     }
 
@@ -441,7 +462,10 @@ mod tests {
         let error = AppError::ConnectionPool {
             source: anyhow::anyhow!("Pool exhausted"),
         };
-        assert_eq!(error_to_status_code(&error), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(
+            error_to_status_code(&error),
+            StatusCode::SERVICE_UNAVAILABLE
+        );
         assert_eq!(error_to_code(&error), "SERVICE_UNAVAILABLE");
     }
 
@@ -450,7 +474,10 @@ mod tests {
         let error = AppError::Internal {
             source: anyhow::anyhow!("Unexpected error"),
         };
-        assert_eq!(error_to_status_code(&error), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            error_to_status_code(&error),
+            StatusCode::INTERNAL_SERVER_ERROR
+        );
         assert_eq!(error_to_code(&error), "INTERNAL_ERROR");
     }
 
@@ -459,19 +486,19 @@ mod tests {
         // This is a simple test to verify that the global_error_handler function
         // includes handling for BAD_REQUEST status code
         // We'll test this by checking the match arm exists in the function
-        
+
         // Create a simple response with 400 status
-        use axum::response::Response;
         use axum::body::Body;
-        
+        use axum::response::Response;
+
         let response = Response::builder()
             .status(StatusCode::BAD_REQUEST)
             .body(Body::empty())
             .unwrap();
-            
+
         // Verify the status code
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-        
+
         // This test mainly verifies that our code compiles and the BAD_REQUEST
         // case is handled in the global_error_handler function
     }
@@ -479,8 +506,8 @@ mod tests {
     #[tokio::test]
     async fn test_global_error_handler_extracts_original_message() {
         // Test that the global error handler can extract error messages from the original response
-        use axum::response::Response;
         use axum::body::Body;
+        use axum::response::Response;
 
         // Create a response with a custom error message in the body
         let custom_error_message = "Custom validation failed";
@@ -521,7 +548,10 @@ mod tests {
                 },
             ],
         };
-        assert_eq!(error_to_status_code(&error), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(
+            error_to_status_code(&error),
+            StatusCode::UNPROCESSABLE_ENTITY
+        );
         assert_eq!(error_to_code(&error), "VALIDATION_ERRORS");
     }
 
@@ -555,7 +585,12 @@ mod tests {
 
         // Verify error response structure
         assert_eq!(json["code"], "VALIDATION_ERRORS");
-        assert!(json["message"].as_str().unwrap().contains("Validation failed"));
+        assert!(
+            json["message"]
+                .as_str()
+                .unwrap()
+                .contains("Validation failed")
+        );
 
         // Verify details contains errors array
         let details = &json["details"];
@@ -573,6 +608,9 @@ mod tests {
 
         // Verify second error
         assert_eq!(errors_array[1]["field"], "username");
-        assert_eq!(errors_array[1]["message"], "Username must be between 3 and 20 characters");
+        assert_eq!(
+            errors_array[1]["message"],
+            "Username must be between 3 and 20 characters"
+        );
     }
 }

@@ -1,14 +1,16 @@
 //! Environment configuration for the application
 
-use std::str::FromStr;
-use serde::{Deserialize, Serialize};
 use crate::config::error::ConfigError;
+use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 /// Application environment
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum Environment {
     /// Development environment
+    #[default]
     Development,
     /// Test environment
     Test,
@@ -23,7 +25,7 @@ impl Environment {
     pub const ENV_VAR: &'static str = "FUSION_APP_ENV";
 
     /// Read the environment from the `FUSION_APP_ENV` environment variable
-    /// 
+    ///
     /// Returns `Development` if the variable is not set or cannot be parsed.
     pub fn from_env() -> Self {
         std::env::var(Self::ENV_VAR)
@@ -40,12 +42,6 @@ impl Environment {
             Environment::Staging => "staging",
             Environment::Production => "production",
         }
-    }
-}
-
-impl Default for Environment {
-    fn default() -> Self {
-        Environment::Development
     }
 }
 
@@ -78,19 +74,43 @@ mod tests {
 
     #[test]
     fn test_environment_from_str() {
-        assert_eq!("development".parse::<Environment>().unwrap(), Environment::Development);
-        assert_eq!("dev".parse::<Environment>().unwrap(), Environment::Development);
+        assert_eq!(
+            "development".parse::<Environment>().unwrap(),
+            Environment::Development
+        );
+        assert_eq!(
+            "dev".parse::<Environment>().unwrap(),
+            Environment::Development
+        );
         assert_eq!("test".parse::<Environment>().unwrap(), Environment::Test);
-        assert_eq!("staging".parse::<Environment>().unwrap(), Environment::Staging);
-        assert_eq!("stage".parse::<Environment>().unwrap(), Environment::Staging);
-        assert_eq!("production".parse::<Environment>().unwrap(), Environment::Production);
-        assert_eq!("prod".parse::<Environment>().unwrap(), Environment::Production);
+        assert_eq!(
+            "staging".parse::<Environment>().unwrap(),
+            Environment::Staging
+        );
+        assert_eq!(
+            "stage".parse::<Environment>().unwrap(),
+            Environment::Staging
+        );
+        assert_eq!(
+            "production".parse::<Environment>().unwrap(),
+            Environment::Production
+        );
+        assert_eq!(
+            "prod".parse::<Environment>().unwrap(),
+            Environment::Production
+        );
     }
 
     #[test]
     fn test_environment_case_insensitive() {
-        assert_eq!("DEVELOPMENT".parse::<Environment>().unwrap(), Environment::Development);
-        assert_eq!("Production".parse::<Environment>().unwrap(), Environment::Production);
+        assert_eq!(
+            "DEVELOPMENT".parse::<Environment>().unwrap(),
+            Environment::Development
+        );
+        assert_eq!(
+            "Production".parse::<Environment>().unwrap(),
+            Environment::Production
+        );
     }
 
     #[test]

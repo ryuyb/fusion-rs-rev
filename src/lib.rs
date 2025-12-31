@@ -7,6 +7,8 @@ pub mod cli;
 pub mod config;
 pub mod db;
 pub mod error;
+pub mod external;
+pub mod jobs;
 pub mod logger;
 pub mod models;
 pub mod repositories;
@@ -15,7 +17,5 @@ pub mod server;
 pub mod services;
 pub mod state;
 pub mod utils;
-pub mod external;
-pub mod jobs;
 
 pub use state::AppState;

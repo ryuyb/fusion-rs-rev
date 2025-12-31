@@ -5,7 +5,7 @@
 
 use axum::{extract::Request, middleware::Next, response::Response};
 use std::time::Instant;
-use tracing::{info, span, Level};
+use tracing::{Level, info, span};
 
 use super::RequestId;
 

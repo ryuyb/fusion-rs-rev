@@ -42,17 +42,18 @@ pub async fn request_id_middleware(mut request: Request, next: Next) -> Response
         .unwrap_or_else(|| Uuid::new_v4().to_string());
 
     // Store in request extensions for downstream access
-    request.extensions_mut().insert(RequestId(request_id.clone()));
+    request
+        .extensions_mut()
+        .insert(RequestId(request_id.clone()));
 
     // Process request
     let mut response = next.run(request).await;
 
     // Add request ID to response headers
     if let Ok(value) = HeaderValue::from_str(&request_id) {
-        response.headers_mut().insert(
-            HeaderName::from_static(REQUEST_ID_HEADER),
-            value,
-        );
+        response
+            .headers_mut()
+            .insert(HeaderName::from_static(REQUEST_ID_HEADER), value);
     }
 
     response
