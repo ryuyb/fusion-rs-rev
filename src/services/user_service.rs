@@ -135,10 +135,10 @@ impl UserService {
     /// # Returns
     /// `Some(User)` if credentials are valid, `None` if user not found or password incorrect
     pub async fn verify_credentials(&self, email: &str, password: &str) -> AppResult<Option<User>> {
-        if let Some(user) = self.get_user_by_email(email).await? {
-            if verify_password(password, &user.password)? {
-                return Ok(Some(user));
-            }
+        if let Some(user) = self.get_user_by_email(email).await?
+            && verify_password(password, &user.password)?
+        {
+            return Ok(Some(user));
         }
         Ok(None)
     }

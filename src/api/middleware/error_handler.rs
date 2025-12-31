@@ -185,15 +185,14 @@ pub async fn global_error_handler(
         let status = response.status();
 
         // Check if the response already has a JSON content type
-        if let Some(content_type) = response.headers().get("content-type") {
-            if content_type
+        if let Some(content_type) = response.headers().get("content-type")
+            && content_type
                 .to_str()
                 .unwrap_or("")
                 .contains("application/json")
-            {
-                // Already has JSON response, return as-is
-                return response;
-            }
+        {
+            // Already has JSON response, return as-is
+            return response;
         }
 
         // Try to extract error message from the original response body

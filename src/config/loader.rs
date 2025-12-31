@@ -3,7 +3,7 @@
 //! This module provides the `ConfigLoader` struct that handles loading
 //! configuration from multiple sources with proper precedence.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use config::{Config, Environment, File, FileFormat};
 
@@ -167,7 +167,7 @@ impl ConfigLoader {
     fn add_file_source(
         &self,
         builder: config::ConfigBuilder<config::builder::DefaultState>,
-        path: &PathBuf,
+        path: &Path,
         required: bool,
     ) -> Result<config::ConfigBuilder<config::builder::DefaultState>, ConfigError> {
         if required && !path.exists() {

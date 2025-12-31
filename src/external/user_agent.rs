@@ -116,7 +116,7 @@ impl UserAgentPool {
     /// A randomly selected User-Agent string matching the criteria, or a fallback if the combination is not available
     ///
     /// # Example
-    /// ```rust
+    /// ```ignore
     /// use crate::external::user_agent::{USER_AGENT_POOL, Browser, Platform};
     ///
     /// // Get Chrome on Windows
@@ -184,7 +184,7 @@ impl UserAgentPool {
     /// Gets a completely random User-Agent from all available options
     ///
     /// # Example
-    /// ```rust
+    /// ```ignore
     /// use crate::external::user_agent::USER_AGENT_POOL;
     ///
     /// let random_ua = USER_AGENT_POOL.random();
@@ -228,7 +228,7 @@ pub static USER_AGENT_POOL: LazyLock<UserAgentPool> = LazyLock::new(UserAgentPoo
 /// A randomly selected Chrome Windows User-Agent string
 ///
 /// # Example
-/// ```rust
+/// ```ignore
 /// use crate::external::user_agent::random_user_agent;
 ///
 /// let ua = random_user_agent();

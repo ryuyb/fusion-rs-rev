@@ -226,17 +226,12 @@ impl Default for FileConfig {
 }
 
 /// Log format options
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum LogFormat {
+    #[default]
     Full,
     Compact,
     Json,
-}
-
-impl Default for LogFormat {
-    fn default() -> Self {
-        LogFormat::Full
-    }
 }
 
 impl std::str::FromStr for LogFormat {
@@ -352,8 +347,9 @@ impl Default for RotationConfig {
 }
 
 /// Rotation strategy options
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum RotationStrategy {
+    #[default]
     Size,
     Time(TimeUnit),
     Count,
@@ -367,12 +363,6 @@ impl RotationStrategy {
             RotationStrategy::Time(time_unit) => time_unit.validate(),
             _ => Ok(()),
         }
-    }
-}
-
-impl Default for RotationStrategy {
-    fn default() -> Self {
-        RotationStrategy::Size
     }
 }
 
@@ -487,8 +477,10 @@ mod tests {
 
     #[test]
     fn test_invalid_log_level() {
-        let mut config = LoggerConfig::default();
-        config.level = "invalid".to_string();
+        let config = LoggerConfig {
+            level: "invalid".to_string(),
+            ..Default::default()
+        };
         assert!(config.validate().is_err());
     }
 

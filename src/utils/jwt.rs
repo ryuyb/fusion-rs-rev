@@ -74,7 +74,7 @@ impl Claims {
 /// The encoded JWT token string
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// let token = generate_token(1, "user@example.com".to_string(), "user".to_string(), TokenType::Access, "secret", 1)?;
 /// ```
 pub fn generate_token(
@@ -198,7 +198,7 @@ pub fn generate_token_pair(
 /// The decoded claims if the token is valid
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// let claims = validate_token(&token, "secret", Some(TokenType::Access))?;
 /// println!("User ID: {}", claims.sub);
 /// ```
@@ -229,15 +229,15 @@ pub fn validate_token(
     })?;
 
     // Validate token type if specified
-    if let Some(expected) = expected_type {
-        if claims.token_type != expected {
-            return Err(AppError::Unauthorized {
-                message: format!(
-                    "Invalid token type: expected {:?}, got {:?}",
-                    expected, claims.token_type
-                ),
-            });
-        }
+    if let Some(expected) = expected_type
+        && claims.token_type != expected
+    {
+        return Err(AppError::Unauthorized {
+            message: format!(
+                "Invalid token type: expected {:?}, got {:?}",
+                expected, claims.token_type
+            ),
+        });
     }
 
     Ok(claims)

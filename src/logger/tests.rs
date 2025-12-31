@@ -124,8 +124,7 @@ mod property_tests {
             prop_assume!(!["trace", "debug", "info", "warn", "error"]
                 .contains(&invalid_level.to_lowercase().as_str()));
 
-            let mut config = LoggerConfig::default();
-            config.level = invalid_level;
+            let config = LoggerConfig { level: invalid_level, ..Default::default() };
 
             prop_assert!(config.validate().is_err());
         }
@@ -665,7 +664,7 @@ mod error_handling_property_tests {
                         || err_msg.contains("access")
                         || err_msg.contains("not found")
                         || err_msg.contains("no such")
-                        || err_msg.len() > 0,
+                        || !err_msg.is_empty(),
                         "Error message should be descriptive: {}", err_msg
                     );
                 }

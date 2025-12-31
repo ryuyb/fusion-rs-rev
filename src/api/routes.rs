@@ -76,17 +76,3 @@ pub fn create_router(state: AppState) -> Router {
         .layer(CorsLayer::permissive())
         .with_state(state)
 }
-
-#[cfg(test)]
-mod tests {
-    // Note: Full integration tests would require a test database
-    // These tests verify the router structure
-
-    #[test]
-    fn test_create_router_compiles() {
-        // This test verifies that the router creation compiles correctly
-        // with all the middleware and routes properly configured
-        // Actual runtime testing requires a database connection
-        assert!(true);
-    }
-}

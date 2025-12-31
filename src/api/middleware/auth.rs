@@ -112,15 +112,13 @@ pub async fn optional_auth_middleware(
     next: Next,
 ) -> Response {
     // Try to extract and validate token, but don't fail if missing
-    if let Some(auth_header) = request.headers().get(header::AUTHORIZATION) {
-        if let Ok(auth_str) = auth_header.to_str() {
-            if let Some(token) = auth_str.strip_prefix("Bearer ") {
-                if let Ok(claims) = validate_access_token(token, &state.jwt_config.secret) {
-                    let auth_user = AuthUser::from(claims);
-                    request.extensions_mut().insert(auth_user);
-                }
-            }
-        }
+    if let Some(auth_header) = request.headers().get(header::AUTHORIZATION)
+        && let Ok(auth_str) = auth_header.to_str()
+        && let Some(token) = auth_str.strip_prefix("Bearer ")
+        && let Ok(claims) = validate_access_token(token, &state.jwt_config.secret)
+    {
+        let auth_user = AuthUser::from(claims);
+        request.extensions_mut().insert(auth_user);
     }
 
     next.run(request).await

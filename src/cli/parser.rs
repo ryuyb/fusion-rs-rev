@@ -304,7 +304,7 @@ mod tests {
 
     #[test]
     fn test_help_flag() {
-        let result = Cli::try_parse_from(&["fusion-rs", "--help"]);
+        let result = Cli::try_parse_from(["fusion-rs", "--help"]);
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(err.kind(), clap::error::ErrorKind::DisplayHelp);
@@ -312,7 +312,7 @@ mod tests {
 
     #[test]
     fn test_version_flag() {
-        let result = Cli::try_parse_from(&["fusion-rs", "--version"]);
+        let result = Cli::try_parse_from(["fusion-rs", "--version"]);
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(err.kind(), clap::error::ErrorKind::DisplayVersion);
@@ -320,7 +320,7 @@ mod tests {
 
     #[test]
     fn test_default_behavior() {
-        let cli = Cli::try_parse_from(&["fusion-rs"]).unwrap();
+        let cli = Cli::try_parse_from(["fusion-rs"]).unwrap();
         assert!(cli.command.is_none());
         assert!(!cli.verbose);
         assert!(!cli.quiet);
@@ -331,7 +331,7 @@ mod tests {
     #[test]
     fn test_serve_command() {
         let cli =
-            Cli::try_parse_from(&["fusion-rs", "serve", "--host", "0.0.0.0", "--port", "8080"])
+            Cli::try_parse_from(["fusion-rs", "serve", "--host", "0.0.0.0", "--port", "8080"])
                 .unwrap();
         if let Some(Commands::Serve {
             host,
@@ -350,7 +350,7 @@ mod tests {
 
     #[test]
     fn test_migrate_command() {
-        let cli = Cli::try_parse_from(&["fusion-rs", "migrate", "--dry-run"]).unwrap();
+        let cli = Cli::try_parse_from(["fusion-rs", "migrate", "--dry-run"]).unwrap();
         if let Some(Commands::Migrate { dry_run, rollback }) = cli.command {
             assert!(dry_run);
             assert!(rollback.is_none());
@@ -361,14 +361,14 @@ mod tests {
 
     #[test]
     fn test_verbose_flag() {
-        let cli = Cli::try_parse_from(&["fusion-rs", "--verbose"]).unwrap();
+        let cli = Cli::try_parse_from(["fusion-rs", "--verbose"]).unwrap();
         assert!(cli.verbose);
         assert!(!cli.quiet);
     }
 
     #[test]
     fn test_conflicting_verbose_quiet() {
-        let result = Cli::try_parse_from(&["fusion-rs", "--verbose", "--quiet"]);
+        let result = Cli::try_parse_from(["fusion-rs", "--verbose", "--quiet"]);
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);

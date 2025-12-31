@@ -199,7 +199,7 @@ mod tests {
         let base_config = create_valid_base_config();
         let merger = ConfigurationMerger::new(base_config);
 
-        let cli = Cli::try_parse_from(&["fusion-rs", "--verbose"]).unwrap();
+        let cli = Cli::try_parse_from(["fusion-rs", "--verbose"]).unwrap();
         let merged_config = merger.merge_cli_args(&cli).unwrap();
 
         assert_eq!(merged_config.logger.level, "debug");
@@ -210,7 +210,7 @@ mod tests {
         let base_config = create_valid_base_config();
         let merger = ConfigurationMerger::new(base_config);
 
-        let cli = Cli::try_parse_from(&["fusion-rs", "--quiet"]).unwrap();
+        let cli = Cli::try_parse_from(["fusion-rs", "--quiet"]).unwrap();
         let merged_config = merger.merge_cli_args(&cli).unwrap();
 
         assert_eq!(merged_config.logger.level, "error");
@@ -221,7 +221,7 @@ mod tests {
         let base_config = create_valid_base_config();
         let merger = ConfigurationMerger::new(base_config);
 
-        let cli = Cli::try_parse_from(&["fusion-rs", "serve", "--host", "0.0.0.0"]).unwrap();
+        let cli = Cli::try_parse_from(["fusion-rs", "serve", "--host", "0.0.0.0"]).unwrap();
         let merged_config = merger.merge_cli_args(&cli).unwrap();
 
         assert_eq!(merged_config.server.host, "0.0.0.0");
@@ -232,7 +232,7 @@ mod tests {
         let base_config = create_valid_base_config();
         let merger = ConfigurationMerger::new(base_config);
 
-        let cli = Cli::try_parse_from(&["fusion-rs", "serve", "--port", "8080"]).unwrap();
+        let cli = Cli::try_parse_from(["fusion-rs", "serve", "--port", "8080"]).unwrap();
         let merged_config = merger.merge_cli_args(&cli).unwrap();
 
         assert_eq!(merged_config.server.port, 8080);
@@ -243,7 +243,7 @@ mod tests {
         let base_config = create_valid_base_config();
         let merger = ConfigurationMerger::new(base_config);
 
-        let cli = Cli::try_parse_from(&["fusion-rs", "--verbose", "serve", "--log-level", "warn"])
+        let cli = Cli::try_parse_from(["fusion-rs", "--verbose", "serve", "--log-level", "warn"])
             .unwrap();
         let merged_config = merger.merge_cli_args(&cli).unwrap();
 

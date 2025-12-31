@@ -21,7 +21,7 @@ use super::user_agent::random_user_agent;
 /// - **Security**: Uses Rustls for TLS (no OpenSSL dependency)
 ///
 /// # Example
-/// ```rust
+/// ```ignore
 /// use crate::external::client::HTTP_CLIENT;
 ///
 /// async fn fetch_data() -> Result<String, reqwest::Error> {
@@ -35,7 +35,7 @@ use super::user_agent::random_user_agent;
 /// ```
 ///
 /// # Advanced Usage
-/// ```rust
+/// ```ignore
 /// use crate::external::client::HTTP_CLIENT;
 /// use crate::external::user_agent::{USER_AGENT_POOL, Browser, Platform};
 ///

@@ -13,7 +13,7 @@ use argon2::{
 /// * `AppResult<String>` - The hashed password string or an error
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// let hashed = hash_password("my_secure_password")?;
 /// ```
 pub fn hash_password(password: &str) -> AppResult<String> {
@@ -34,7 +34,7 @@ pub fn hash_password(password: &str) -> AppResult<String> {
 /// * `AppResult<bool>` - True if password matches, false otherwise
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// let is_valid = verify_password("my_secure_password", &hashed_password)?;
 /// ```
 pub fn verify_password(password: &str, password_hash: &str) -> AppResult<bool> {

@@ -7,8 +7,10 @@ use std::str::FromStr;
 /// Application environment
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum Environment {
     /// Development environment
+    #[default]
     Development,
     /// Test environment
     Test,
@@ -40,12 +42,6 @@ impl Environment {
             Environment::Staging => "staging",
             Environment::Production => "production",
         }
-    }
-}
-
-impl Default for Environment {
-    fn default() -> Self {
-        Environment::Development
     }
 }
 

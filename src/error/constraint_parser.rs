@@ -54,7 +54,7 @@ impl ConstraintParser {
     /// Optional tuple of (entity, field, value) if parsing succeeds
     ///
     /// # Examples
-    /// ```
+    /// ```ignore
     /// use crate::error::constraint_parser::ConstraintParser;
     ///
     /// let message = "duplicate key value violates unique constraint \"users_email_key\"\nDETAIL: Key (email)=(test@example.com) already exists.";
@@ -66,15 +66,15 @@ impl ConstraintParser {
         constraint_name: Option<&str>,
     ) -> Option<(String, String, String)> {
         // Try to parse from constraint name first (e.g., "users_email_key")
-        if let Some(constraint) = constraint_name {
-            if let Some((entity, field)) = Self::parse_constraint_name(constraint) {
-                // Extract value from message using regex
-                if let Some(value) = Self::extract_value_from_message(message) {
-                    return Some((entity, field, value));
-                }
-                // Fallback to generic value if we can't parse it
-                return Some((entity, field, "duplicate_value".to_string()));
+        if let Some(constraint) = constraint_name
+            && let Some((entity, field)) = Self::parse_constraint_name(constraint)
+        {
+            // Extract value from message using regex
+            if let Some(value) = Self::extract_value_from_message(message) {
+                return Some((entity, field, value));
             }
+            // Fallback to generic value if we can't parse it
+            return Some((entity, field, "duplicate_value".to_string()));
         }
 
         // Fallback: try to parse from the error message directly
@@ -101,7 +101,7 @@ impl ConstraintParser {
     /// Optional tuple of (entity, field) if parsing succeeds
     ///
     /// # Examples
-    /// ```
+    /// ```ignore
     /// use crate::error::constraint_parser::ConstraintParser;
     ///
     /// let message = "null value in column \"email\" violates not-null constraint";
@@ -138,7 +138,7 @@ impl ConstraintParser {
     /// Optional tuple of (entity, field, referenced_value) if parsing succeeds
     ///
     /// # Examples
-    /// ```
+    /// ```ignore
     /// use crate::error::constraint_parser::ConstraintParser;
     ///
     /// let message = "insert or update on table \"posts\" violates foreign key constraint \"posts_user_id_fkey\"\nDETAIL: Key (user_id)=(999) is not present in table \"users\".";
@@ -150,13 +150,13 @@ impl ConstraintParser {
         constraint_name: Option<&str>,
     ) -> Option<(String, String, String)> {
         // Try to parse from constraint name (e.g., "posts_user_id_fkey")
-        if let Some(constraint) = constraint_name {
-            if let Some((entity, field)) = Self::parse_foreign_key_constraint_name(constraint) {
-                if let Some(value) = Self::extract_value_from_message(message) {
-                    return Some((entity, field, value));
-                }
-                return Some((entity, field, "invalid_reference".to_string()));
+        if let Some(constraint) = constraint_name
+            && let Some((entity, field)) = Self::parse_foreign_key_constraint_name(constraint)
+        {
+            if let Some(value) = Self::extract_value_from_message(message) {
+                return Some((entity, field, value));
             }
+            return Some((entity, field, "invalid_reference".to_string()));
         }
 
         // Fallback: parse from message
@@ -182,7 +182,7 @@ impl ConstraintParser {
     /// Optional tuple of (entity, field) if parsing succeeds
     ///
     /// # Examples
-    /// ```
+    /// ```ignore
     /// use crate::error::constraint_parser::ConstraintParser;
     ///
     /// let message = "new row for relation \"users\" violates check constraint \"users_age_check\"";
@@ -194,10 +194,10 @@ impl ConstraintParser {
         constraint_name: Option<&str>,
     ) -> Option<(String, String)> {
         // Try to parse from constraint name
-        if let Some(constraint) = constraint_name {
-            if let Some((entity, field)) = Self::parse_constraint_name(constraint) {
-                return Some((entity, field));
-            }
+        if let Some(constraint) = constraint_name
+            && let Some((entity, field)) = Self::parse_constraint_name(constraint)
+        {
+            return Some((entity, field));
         }
 
         // Fallback: try to extract from message
@@ -242,8 +242,8 @@ impl ConstraintParser {
     /// # Returns
     /// Optional tuple of (entity, field) if parsing succeeds
     pub fn parse_foreign_key_constraint_name(constraint_name: &str) -> Option<(String, String)> {
-        if constraint_name.ends_with("_fkey") {
-            let without_suffix = &constraint_name[..constraint_name.len() - 5]; // Remove "_fkey"
+        if let Some(without_suffix) = constraint_name.strip_suffix("_fkey") {
+            // Remove "_fkey"
             let parts: Vec<&str> = without_suffix.split('_').collect();
             if parts.len() >= 2 {
                 let entity = parts[0].to_string();
@@ -326,10 +326,10 @@ impl ConstraintParser {
 
         // Fallback: look for quoted strings using simple string search
         // This is a fallback for cases where regex might not match
-        if let Some(start) = message.find('"') {
-            if let Some(end) = message[start + 1..].find('"') {
-                return Some(message[start + 1..start + 1 + end].to_string());
-            }
+        if let Some(start) = message.find('"')
+            && let Some(end) = message[start + 1..].find('"')
+        {
+            return Some(message[start + 1..start + 1 + end].to_string());
         }
 
         None

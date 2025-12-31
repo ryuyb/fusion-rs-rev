@@ -104,13 +104,13 @@ fn validate_serve_args(host: Option<&String>, port: Option<u16>) -> AppResult<()
 /// Validate migrate command arguments
 fn validate_migrate_args(rollback: Option<u32>) -> AppResult<()> {
     // Additional validation for rollback steps
-    if let Some(steps) = rollback {
-        if steps > 50 {
-            eprintln!(
-                "Warning: Rolling back {} migrations is a large operation. Consider using smaller steps.",
-                steps
-            );
-        }
+    if let Some(steps) = rollback
+        && steps > 50
+    {
+        eprintln!(
+            "Warning: Rolling back {} migrations is a large operation. Consider using smaller steps.",
+            steps
+        );
     }
 
     Ok(())
@@ -130,7 +130,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_execute_serve_dry_run() {
-        let cli = Cli::try_parse_from(&["fusion-rs", "serve", "--dry-run"]).unwrap();
+        let cli = Cli::try_parse_from(["fusion-rs", "serve", "--dry-run"]).unwrap();
         let config = create_valid_config();
 
         let result = execute_command(&cli, config).await;
@@ -139,7 +139,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_execute_serve_normal() {
-        let cli = Cli::try_parse_from(&["fusion-rs", "serve"]).unwrap();
+        let cli = Cli::try_parse_from(["fusion-rs", "serve"]).unwrap();
         let config = create_valid_config();
 
         let result = execute_command(&cli, config).await;
@@ -148,7 +148,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_validate_command_args() {
-        let cli = Cli::try_parse_from(&["fusion-rs", "serve", "--port", "8080"]).unwrap();
+        let cli = Cli::try_parse_from(["fusion-rs", "serve", "--port", "8080"]).unwrap();
         let config = create_valid_config();
 
         let result = validate_command_args(&cli, &config);

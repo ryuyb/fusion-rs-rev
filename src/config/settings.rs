@@ -494,7 +494,7 @@ impl RotationSettings {
 ///
 /// This structure represents the entire configuration that can be loaded
 /// from TOML files and environment variables.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct Settings {
     /// Application information
     #[serde(default)]
@@ -515,18 +515,6 @@ pub struct Settings {
     /// Logger configuration
     #[serde(default)]
     pub logger: LoggerSettings,
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            application: ApplicationConfig::default(),
-            server: ServerConfig::default(),
-            database: DatabaseConfig::default(),
-            jwt: JwtConfig::default(),
-            logger: LoggerSettings::default(),
-        }
-    }
 }
 
 #[cfg(test)]
