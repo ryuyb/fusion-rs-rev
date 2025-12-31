@@ -17,11 +17,6 @@ pub const HEALTH_TAG: &str = "Health";
         crate::api::handlers::health::liveness_check,
     ),
     modifiers(&SecurityAddon),
-    tags(
-        (name = USER_TAG, description = "User management endpoints"),
-        (name = AUTH_TAG, description = "User authentication endpoints"),
-        (name = HEALTH_TAG, description = "Health check and monitoring endpoints")
-    ),
     components(
         schemas(
             crate::api::dto::ErrorResponse,
