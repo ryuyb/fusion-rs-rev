@@ -88,3 +88,14 @@ jobs:
               repo: context.repo.repo,
               body: body
             });
+
+      - name: Check results
+        if: always()
+        run: |
+          if [ "${{ steps.fmt.outcome }}" != "success" ] || \
+             [ "${{ steps.clippy.outcome }}" != "success" ] || \
+             [ "${{ steps.build.outcome }}" != "success" ] || \
+             [ "${{ steps.test.outcome }}" != "success" ]; then
+            echo "Some checks failed"
+            exit 1
+          fi
