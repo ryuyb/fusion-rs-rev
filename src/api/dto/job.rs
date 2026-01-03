@@ -1,6 +1,6 @@
 //! Job-related DTOs for API requests and responses.
 
-use crate::jobs::models::{NewScheduledJob, ScheduledJob, JobExecution, UpdateScheduledJob};
+use crate::jobs::models::{JobExecution, NewScheduledJob, ScheduledJob, UpdateScheduledJob};
 use crate::jobs::types::JobStatus;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -221,5 +221,88 @@ impl From<JobExecution> for JobExecutionResponse {
             error_details: exec.error_details,
             result: exec.result,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_create_job_request_into_new_job() {
+        let req = CreateJobRequest {
+            job_name: "test_job".to_string(),
+            job_type: "test_type".to_string(),
+            cron_expression: "0 0 * * * * *".to_string(),
+            enabled: true,
+            allow_concurrent: false,
+            max_concurrent: Some(1),
+            max_retries: 3,
+            timeout_seconds: 300,
+            payload: Some(json!({"key": "value"})),
+            description: Some("Test job".to_string()),
+        };
+
+        let new_job = req.into_new_job();
+        assert_eq!(new_job.job_name, "test_job");
+        assert_eq!(new_job.job_type, "test_type");
+        assert_eq!(new_job.retry_delay_seconds, 60);
+        assert_eq!(new_job.retry_backoff_multiplier, bigdecimal::BigDecimal::from(2));
+    }
+
+    #[test]
+    fn test_update_job_request_into_update_job() {
+        let req = UpdateJobRequest {
+            cron_expression: Some("0 0 1 * * * *".to_string()),
+            enabled: Some(false),
+            allow_concurrent: None,
+            max_concurrent: Some(2),
+            max_retries: Some(5),
+            retry_delay_seconds: Some(120),
+            retry_backoff_multiplier: Some(1.5),
+            timeout_seconds: Some(600),
+            payload: None,
+            description: Some("Updated".to_string()),
+        };
+
+        let update = req.into_update_job();
+        assert_eq!(update.cron_expression, Some("0 0 1 * * * *".to_string()));
+        assert_eq!(update.enabled, Some(false));
+        assert_eq!(update.max_concurrent, Some(Some(2)));
+        assert_eq!(update.max_retries, Some(5));
+    }
+
+    #[test]
+    fn test_job_response_from_scheduled_job() {
+        use chrono::DateTime;
+
+        let dt = DateTime::from_timestamp(0, 0).unwrap().naive_utc();
+        let job = ScheduledJob {
+            id: 1,
+            job_name: "test".to_string(),
+            job_type: "test_type".to_string(),
+            cron_expression: "0 0 * * * * *".to_string(),
+            enabled: true,
+            allow_concurrent: false,
+            max_concurrent: Some(1),
+            max_retries: 3,
+            retry_delay_seconds: 60,
+            retry_backoff_multiplier: bigdecimal::BigDecimal::from(2),
+            timeout_seconds: 300,
+            payload: None,
+            description: None,
+            last_run_at: None,
+            last_run_status: None,
+            next_run_at: None,
+            created_at: dt,
+            updated_at: dt,
+            created_by: None,
+        };
+
+        let response = JobResponse::from(job);
+        assert_eq!(response.id, 1);
+        assert_eq!(response.job_name, "test");
+        assert_eq!(response.retry_backoff_multiplier, "2");
     }
 }

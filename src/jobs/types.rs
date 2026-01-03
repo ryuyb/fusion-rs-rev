@@ -61,3 +61,34 @@ pub trait JobTask: Send + Sync + std::fmt::Debug {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_job_status_display() {
+        assert_eq!(JobStatus::Pending.to_string(), "pending");
+        assert_eq!(JobStatus::Running.to_string(), "running");
+        assert_eq!(JobStatus::Success.to_string(), "success");
+        assert_eq!(JobStatus::Failed.to_string(), "failed");
+        assert_eq!(JobStatus::Timeout.to_string(), "timeout");
+        assert_eq!(JobStatus::Cancelled.to_string(), "cancelled");
+    }
+
+    #[test]
+    fn test_job_status_serialization() {
+        let status = JobStatus::Success;
+        let json = serde_json::to_string(&status).unwrap();
+        assert_eq!(json, "\"success\"");
+
+        let deserialized: JobStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized, JobStatus::Success);
+    }
+
+    #[test]
+    fn test_job_status_equality() {
+        assert_eq!(JobStatus::Pending, JobStatus::Pending);
+        assert_ne!(JobStatus::Pending, JobStatus::Running);
+    }
+}
