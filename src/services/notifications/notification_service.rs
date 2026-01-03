@@ -53,7 +53,8 @@ impl NotificationService {
         new_channel: NewNotificationChannel,
     ) -> AppResult<NotificationChannel> {
         // Validate config based on channel type
-        self.validate_channel_config(&new_channel.channel_type, &new_channel.config)?;
+        self.validate_channel_config(&new_channel.channel_type, &new_channel.config)
+            .await?;
 
         self.channel_repo.create(new_channel).await
     }
@@ -127,7 +128,8 @@ impl NotificationService {
 
         // Validate config if being updated
         if let Some(ref config) = update_data.config {
-            self.validate_channel_config(&channel.channel_type, config)?;
+            self.validate_channel_config(&channel.channel_type, config)
+                .await?;
         }
 
         self.channel_repo.update(id, update_data).await
@@ -340,23 +342,31 @@ impl NotificationService {
 
     /// Validates channel configuration based on type
     ///
+    /// Validates both config parsing and provider-specific validation rules.
+    ///
     /// # Arguments
     /// * `channel_type` - The type of channel
     /// * `config` - The configuration JSONB value
     ///
     /// # Returns
     /// Ok(()) if valid, Err with validation details otherwise
-    fn validate_channel_config(
+    async fn validate_channel_config(
         &self,
         channel_type: &ChannelType,
         config: &serde_json::Value,
     ) -> AppResult<()> {
         match channel_type {
             ChannelType::Webhook => {
-                WebhookConfig::from_json(config).map_err(|e| AppError::Validation {
-                    field: "config".to_string(),
-                    reason: format!("Invalid webhook config: {}", e),
-                })?;
+                // Parse config
+                let webhook_config =
+                    WebhookConfig::from_json(config).map_err(|e| AppError::Validation {
+                        field: "config".to_string(),
+                        reason: format!("Invalid webhook config: {}", e),
+                    })?;
+
+                // Create provider and validate
+                let provider = WebhookProvider::new(webhook_config);
+                provider.validate_config().await?;
             }
             // Future validations:
             // ChannelType::Email => { ... }
