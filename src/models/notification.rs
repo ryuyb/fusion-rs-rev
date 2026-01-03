@@ -4,17 +4,10 @@
 //! notification channels and logs.
 
 use chrono::NaiveDateTime;
-use diesel::AsExpression;
-use diesel::FromSqlRow;
-use diesel::deserialize::{self, FromSql};
-use diesel::pg::Pg;
 use diesel::prelude::*;
-use diesel::serialize::{self, Output, ToSql};
-use diesel::sql_types::Text;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
-use std::io::Write;
 
 // ============================================================================
 // Enums
@@ -30,10 +23,9 @@ use std::io::Write;
     Serialize,
     Deserialize,
     utoipa::ToSchema,
-    AsExpression,
-    FromSqlRow,
+    diesel_derive_enum::DbEnum,
 )]
-#[diesel(sql_type = Text)]
+#[db_enum(existing_type_path = "crate::schema::sql_types::ChannelType")]
 #[serde(rename_all = "lowercase")]
 pub enum ChannelType {
     Webhook,
@@ -41,41 +33,6 @@ pub enum ChannelType {
     Sms,
     Discord,
     Slack,
-}
-
-impl diesel::query_builder::QueryId for ChannelType {
-    type QueryId = ChannelType;
-    const HAS_STATIC_QUERY_ID: bool = false;
-}
-
-impl ToSql<Text, Pg> for ChannelType {
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
-        let s = match self {
-            ChannelType::Webhook => "webhook",
-            ChannelType::Email => "email",
-            ChannelType::Sms => "sms",
-            ChannelType::Discord => "discord",
-            ChannelType::Slack => "slack",
-        };
-        out.write_all(s.as_bytes())?;
-        Ok(serialize::IsNull::No)
-    }
-}
-
-impl FromSql<Text, Pg> for ChannelType {
-    fn from_sql(
-        bytes: <Pg as diesel::backend::Backend>::RawValue<'_>,
-    ) -> deserialize::Result<Self> {
-        let s = <String as FromSql<Text, Pg>>::from_sql(bytes)?;
-        match s.as_str() {
-            "webhook" => Ok(ChannelType::Webhook),
-            "email" => Ok(ChannelType::Email),
-            "sms" => Ok(ChannelType::Sms),
-            "discord" => Ok(ChannelType::Discord),
-            "slack" => Ok(ChannelType::Slack),
-            _ => Err(format!("Unrecognized channel_type: {}", s).into()),
-        }
-    }
 }
 
 /// Status of a notification log entry
@@ -88,49 +45,15 @@ impl FromSql<Text, Pg> for ChannelType {
     Serialize,
     Deserialize,
     utoipa::ToSchema,
-    AsExpression,
-    FromSqlRow,
+    diesel_derive_enum::DbEnum,
 )]
-#[diesel(sql_type = Text)]
+#[db_enum(existing_type_path = "crate::schema::sql_types::NotificationStatus")]
 #[serde(rename_all = "lowercase")]
 pub enum NotificationStatus {
     Pending,
     Sent,
     Failed,
     Retrying,
-}
-
-impl diesel::query_builder::QueryId for NotificationStatus {
-    type QueryId = NotificationStatus;
-    const HAS_STATIC_QUERY_ID: bool = false;
-}
-
-impl ToSql<Text, Pg> for NotificationStatus {
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
-        let s = match self {
-            NotificationStatus::Pending => "pending",
-            NotificationStatus::Sent => "sent",
-            NotificationStatus::Failed => "failed",
-            NotificationStatus::Retrying => "retrying",
-        };
-        out.write_all(s.as_bytes())?;
-        Ok(serialize::IsNull::No)
-    }
-}
-
-impl FromSql<Text, Pg> for NotificationStatus {
-    fn from_sql(
-        bytes: <Pg as diesel::backend::Backend>::RawValue<'_>,
-    ) -> deserialize::Result<Self> {
-        let s = <String as FromSql<Text, Pg>>::from_sql(bytes)?;
-        match s.as_str() {
-            "pending" => Ok(NotificationStatus::Pending),
-            "sent" => Ok(NotificationStatus::Sent),
-            "failed" => Ok(NotificationStatus::Failed),
-            "retrying" => Ok(NotificationStatus::Retrying),
-            _ => Err(format!("Unrecognized notification_status: {}", s).into()),
-        }
-    }
 }
 
 // ============================================================================

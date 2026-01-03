@@ -1,11 +1,17 @@
 -- ============================================================================
+-- Create PostgreSQL ENUM types
+-- ============================================================================
+CREATE TYPE channel_type AS ENUM ('webhook', 'email', 'sms', 'discord', 'slack');
+CREATE TYPE notification_status AS ENUM ('pending', 'sent', 'failed', 'retrying');
+
+-- ============================================================================
 -- Notification Channels Table
 -- ============================================================================
 -- Stores user notification channel configurations
 CREATE TABLE notification_channels (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    channel_type TEXT NOT NULL,
+    channel_type channel_type NOT NULL,
     name VARCHAR(255) NOT NULL,
     config JSONB NOT NULL,
     enabled BOOLEAN NOT NULL DEFAULT true,
@@ -32,7 +38,7 @@ CREATE TABLE notification_logs (
     id BIGSERIAL PRIMARY KEY,
     channel_id INTEGER NOT NULL REFERENCES notification_channels(id) ON DELETE CASCADE,
     message TEXT NOT NULL,
-    status TEXT NOT NULL,
+    status notification_status NOT NULL,
     error_message TEXT,
     retry_count INTEGER NOT NULL DEFAULT 0,
     sent_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -44,9 +50,3 @@ CREATE TABLE notification_logs (
 CREATE INDEX idx_notification_logs_channel_id ON notification_logs(channel_id);
 CREATE INDEX idx_notification_logs_status ON notification_logs(status);
 CREATE INDEX idx_notification_logs_sent_at ON notification_logs(sent_at DESC);
-
--- ============================================================================
--- Note: We use TEXT type for enum fields instead of PostgreSQL ENUM types
--- This provides better flexibility for adding new enum values without database migrations
--- Validation happens at the application level via Rust enums
--- ============================================================================
