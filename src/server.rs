@@ -20,24 +20,8 @@ impl Server {
         Self { settings }
     }
 
-    /// Start the server and run until shutdown signal
-    ///
-    /// This method:
-    /// 1. Logs startup information
-    /// 2. Initializes database connection pool
-    /// 3. Creates application state
-    /// 4. Binds to configured address
-    /// 5. Starts the HTTP server with graceful shutdown
-    ///
-    /// # Returns
-    /// Returns Ok(()) on successful shutdown, or error on startup failure
-    ///
-    /// # Errors
-    /// - Database connection pool initialization errors
-    /// - Address binding errors
-    /// - Server runtime errors
-    pub async fn run(self) -> anyhow::Result<()> {
-        // Log application startup information
+    /// Log all configuration settings at startup
+    fn log_startup_config(&self) {
         tracing::info!(
             app_name = %self.settings.application.name,
             app_version = %self.settings.application.version,
@@ -45,98 +29,115 @@ impl Server {
             "Application starting"
         );
 
-        // Log server configuration
         tracing::info!(
             host = %self.settings.server.host,
             port = %self.settings.server.port,
-            request_timeout = %self.settings.server.request_timeout,
-            keep_alive_timeout = %self.settings.server.keep_alive_timeout,
-            "Server configuration loaded"
+            log_level = %self.settings.logger.level,
+            "Configuration loaded"
         );
+    }
 
-        // Log database configuration (without sensitive URL details)
-        tracing::info!(
-            max_connections = %self.settings.database.max_connections,
-            min_connections = %self.settings.database.min_connections,
-            connection_timeout = %self.settings.database.connection_timeout,
-            "Database configuration loaded"
-        );
-
-        // Log logger configuration
-        tracing::info!(
-            level = %self.settings.logger.level,
-            console_enabled = %self.settings.logger.console.enabled,
-            file_enabled = %self.settings.logger.file.enabled,
-            "Logger configuration loaded"
-        );
-
-        // Log JWT configuration (without sensitive secret)
-        tracing::info!(
-            access_token_expiration = %self.settings.jwt.access_token_expiration,
-            refresh_token_expiration = %self.settings.jwt.refresh_token_expiration,
-            secret_configured = %(!self.settings.jwt.secret.is_empty()),
-            "JWT configuration loaded"
-        );
-
-        // Validate JWT configuration
+    /// Validate configuration settings
+    fn validate_config(&self) -> anyhow::Result<()> {
         self.settings.jwt.validate().map_err(|e| {
             tracing::error!(error = %e, "JWT configuration validation failed");
             anyhow::anyhow!("JWT configuration validation failed: {}", e)
         })?;
         tracing::info!("JWT configuration validated");
+        Ok(())
+    }
 
-        tracing::info!("Configuration loaded successfully");
-
-        // Initialize database connection pool
+    /// Initialize database connection pool
+    async fn initialize_database(&self) -> anyhow::Result<crate::db::AsyncDbPool> {
         tracing::info!("Initializing database connection pool...");
         let pool = establish_async_connection_pool(&self.settings.database).await?;
         tracing::info!("Database connection pool initialized");
+        Ok(pool)
+    }
 
-        // Initialize job scheduler
-        let scheduler = if self.settings.jobs.enabled {
+    /// Initialize job scheduler if enabled
+    async fn initialize_scheduler(
+        &self,
+        pool: crate::db::AsyncDbPool,
+    ) -> anyhow::Result<Option<crate::jobs::JobScheduler>> {
+        if self.settings.jobs.enabled {
             tracing::info!("Initializing job scheduler");
 
             let mut registry = crate::jobs::JobRegistry::new();
             registry.register::<crate::jobs::tasks::DataCleanupTask>();
 
-            let job_scheduler = crate::jobs::JobScheduler::new(pool.clone(), registry).await?;
-
+            let job_scheduler = crate::jobs::JobScheduler::new(pool, registry).await?;
             job_scheduler.start().await?;
+
             tracing::info!("Job scheduler started");
-            Some(job_scheduler)
+            Ok(Some(job_scheduler))
         } else {
-            None
-        };
+            Ok(None)
+        }
+    }
 
-        // Create application state with services
-        let state = AppState::new(pool.clone(), self.settings.jwt.clone(), scheduler);
-        tracing::info!("Application state created");
-
-        // Create router with all routes and middleware
-        let router = create_router(state.clone());
-        tracing::info!("Router configured");
-
-        // Bind to the configured address
+    /// Bind TCP listener to configured address
+    async fn bind_listener(&self) -> anyhow::Result<TcpListener> {
         let address = self.settings.server.address();
         let listener = TcpListener::bind(&address).await.map_err(|e| {
             tracing::error!(error = %e, address = %address, "Failed to bind to address");
             anyhow::anyhow!("Failed to bind to {}: {}", address, e)
         })?;
 
-        tracing::info!(address = %address, "Server listening");
+        tracing::info!(address = %format!("http://{}", address), "Server listening");
+        Ok(listener)
+    }
 
-        // Start the server with graceful shutdown
+    /// Gracefully shutdown the job scheduler
+    async fn shutdown_scheduler(state: &AppState) -> anyhow::Result<()> {
+        if let Some(scheduler) = &state.scheduler {
+            tracing::info!("Stopping job scheduler");
+            scheduler.stop().await?;
+            tracing::info!("Job scheduler stopped");
+        }
+        Ok(())
+    }
+
+    /// Start the server and run until shutdown signal
+    ///
+    /// This method:
+    /// 1. Logs startup information
+    /// 2. Validates configuration
+    /// 3. Initializes database connection pool
+    /// 4. Initializes job scheduler (if enabled)
+    /// 5. Creates application state
+    /// 6. Binds to configured address
+    /// 7. Starts the HTTP server with graceful shutdown
+    ///
+    /// # Returns
+    /// Returns Ok(()) on successful shutdown, or error on startup failure
+    ///
+    /// # Errors
+    /// - Configuration validation errors
+    /// - Database connection pool initialization errors
+    /// - Job scheduler initialization errors
+    /// - Address binding errors
+    /// - Server runtime errors
+    pub async fn run(self) -> anyhow::Result<()> {
+        self.log_startup_config();
+        self.validate_config()?;
+
+        let pool = self.initialize_database().await?;
+        let scheduler = self.initialize_scheduler(pool.clone()).await?;
+
+        let state = AppState::new(pool, self.settings.jwt.clone(), scheduler);
+        tracing::info!("Application state created");
+
+        let router = create_router(state.clone());
+        tracing::info!("Router configured");
+
+        let listener = self.bind_listener().await?;
+
         axum::serve(listener, router)
             .with_graceful_shutdown(shutdown_signal())
             .await?;
 
-        // Stop scheduler gracefully
-        if let Some(sched) = &state.scheduler {
-            tracing::info!("Stopping job scheduler");
-            sched.stop().await?;
-            tracing::info!("Job scheduler stopped");
-        }
-
+        Self::shutdown_scheduler(&state).await?;
         tracing::info!("Server shutdown complete");
 
         Ok(())
