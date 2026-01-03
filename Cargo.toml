@@ -24,7 +24,7 @@ futures = "0.3"
 # PostgreSQL enum derivation with diesel
 diesel-derive-enum = { version = "3.0.0-beta.1", features = ["postgres"] }
 
-reqwest = { version = "0.13.0-rc", features = ["rustls", "stream", "json", "deflate", "gzip", "brotli", "zstd", "socks", "cookies", "charset", "http2", "system-proxy"], default-features = false}
+reqwest = { version = "0.13", features = ["rustls", "stream", "json", "deflate", "gzip", "brotli", "zstd", "socks", "cookies", "charset", "http2", "system-proxy"], default-features = false}
 rand = "0.9"
 
 # Core logging dependencies
