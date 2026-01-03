@@ -18,10 +18,7 @@ pub struct JobScheduler {
 }
 
 impl JobScheduler {
-    pub async fn new(
-        db_pool: AsyncDbPool,
-        registry: JobRegistry,
-    ) -> AppResult<Self> {
+    pub async fn new(db_pool: AsyncDbPool, registry: JobRegistry) -> AppResult<Self> {
         let scheduler = TokioCronScheduler::new()
             .await
             .map_err(|e| AppError::Internal {

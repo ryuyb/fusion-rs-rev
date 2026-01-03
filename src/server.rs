@@ -99,10 +99,7 @@ impl Server {
             let mut registry = crate::jobs::JobRegistry::new();
             registry.register::<crate::jobs::tasks::DataCleanupTask>();
 
-            let job_scheduler = crate::jobs::JobScheduler::new(
-                pool.clone(),
-                registry,
-            ).await?;
+            let job_scheduler = crate::jobs::JobScheduler::new(pool.clone(), registry).await?;
 
             job_scheduler.start().await?;
             tracing::info!("Job scheduler started");

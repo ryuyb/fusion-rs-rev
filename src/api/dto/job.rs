@@ -28,15 +28,27 @@ use validator::Validate;
     "description": "Clean up old job execution records"
 }))]
 pub struct CreateJobRequest {
-    #[validate(length(min = 1, max = 255, message = "Job name must be between 1 and 255 characters"))]
+    #[validate(length(
+        min = 1,
+        max = 255,
+        message = "Job name must be between 1 and 255 characters"
+    ))]
     #[schema(example = "daily_cleanup")]
     pub job_name: String,
 
-    #[validate(length(min = 1, max = 100, message = "Job type must be between 1 and 100 characters"))]
+    #[validate(length(
+        min = 1,
+        max = 100,
+        message = "Job type must be between 1 and 100 characters"
+    ))]
     #[schema(example = "data_cleanup")]
     pub job_type: String,
 
-    #[validate(length(min = 1, max = 255, message = "Cron expression must be between 1 and 255 characters"))]
+    #[validate(length(
+        min = 1,
+        max = 255,
+        message = "Cron expression must be between 1 and 255 characters"
+    ))]
     #[schema(example = "0 0 2 * * * *")]
     pub cron_expression: String,
 
@@ -125,7 +137,8 @@ impl UpdateJobRequest {
             max_retries: self.max_retries,
             retry_delay_seconds: self.retry_delay_seconds,
             retry_backoff_multiplier: self.retry_backoff_multiplier.map(|v| {
-                bigdecimal::BigDecimal::try_from(v).unwrap_or_else(|_| bigdecimal::BigDecimal::from(2))
+                bigdecimal::BigDecimal::try_from(v)
+                    .unwrap_or_else(|_| bigdecimal::BigDecimal::from(2))
             }),
             timeout_seconds: self.timeout_seconds,
             payload: self.payload,
@@ -178,9 +191,13 @@ impl From<ScheduledJob> for JobResponse {
             timeout_seconds: job.timeout_seconds,
             payload: job.payload,
             description: job.description,
-            last_run_at: job.last_run_at.map(|dt| dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()),
+            last_run_at: job
+                .last_run_at
+                .map(|dt| dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()),
             last_run_status: job.last_run_status,
-            next_run_at: job.next_run_at.map(|dt| dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()),
+            next_run_at: job
+                .next_run_at
+                .map(|dt| dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()),
             created_at: job.created_at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
             updated_at: job.updated_at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
             created_by: job.created_by,
@@ -213,7 +230,9 @@ impl From<JobExecution> for JobExecutionResponse {
             job_name: exec.job_name,
             execution_id: exec.execution_id.to_string(),
             started_at: exec.started_at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
-            completed_at: exec.completed_at.map(|dt| dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()),
+            completed_at: exec
+                .completed_at
+                .map(|dt| dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()),
             duration_ms: exec.duration_ms,
             status: exec.status,
             retry_attempt: exec.retry_attempt,
@@ -248,7 +267,10 @@ mod tests {
         assert_eq!(new_job.job_name, "test_job");
         assert_eq!(new_job.job_type, "test_type");
         assert_eq!(new_job.retry_delay_seconds, 60);
-        assert_eq!(new_job.retry_backoff_multiplier, bigdecimal::BigDecimal::from(2));
+        assert_eq!(
+            new_job.retry_backoff_multiplier,
+            bigdecimal::BigDecimal::from(2)
+        );
     }
 
     #[test]

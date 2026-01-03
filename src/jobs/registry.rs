@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use serde::de::DeserializeOwned;
 use serde_json::Value as JsonValue;
+use std::collections::HashMap;
 
 use crate::error::{AppError, AppResult};
 use crate::jobs::types::JobTask;
@@ -8,6 +8,7 @@ use crate::jobs::types::JobTask;
 type TaskFactory = Box<dyn Fn(JsonValue) -> AppResult<Box<dyn JobTask>> + Send + Sync>;
 
 /// Registry for mapping job types to task implementations
+#[derive(Default)]
 pub struct JobRegistry {
     factories: HashMap<String, TaskFactory>,
 }

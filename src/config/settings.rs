@@ -741,15 +741,22 @@ mod tests {
 
     fn arb_jobs_config() -> impl Strategy<Value = JobsConfig> {
         (
-            any::<bool>(),       // enabled
-            60u64..=600u64,      // job_timeout
-            0u32..=5u32,         // max_retries
-            10u64..=300u64,      // retry_delay
-            1.0f64..=3.0f64,     // retry_backoff_multiplier
-            1u32..=90u32,        // history_retention_days
+            any::<bool>(),   // enabled
+            60u64..=600u64,  // job_timeout
+            0u32..=5u32,     // max_retries
+            10u64..=300u64,  // retry_delay
+            1.0f64..=3.0f64, // retry_backoff_multiplier
+            1u32..=90u32,    // history_retention_days
         )
             .prop_map(
-                |(enabled, job_timeout, max_retries, retry_delay, retry_backoff_multiplier, history_retention_days)| {
+                |(
+                    enabled,
+                    job_timeout,
+                    max_retries,
+                    retry_delay,
+                    retry_backoff_multiplier,
+                    history_retention_days,
+                )| {
                     JobsConfig {
                         enabled,
                         job_timeout,
@@ -771,14 +778,16 @@ mod tests {
             arb_logger_settings(),
             arb_jobs_config(),
         )
-            .prop_map(|(application, server, database, jwt, logger, jobs)| Settings {
-                application,
-                server,
-                database,
-                jwt,
-                logger,
-                jobs,
-            })
+            .prop_map(
+                |(application, server, database, jwt, logger, jobs)| Settings {
+                    application,
+                    server,
+                    database,
+                    jwt,
+                    logger,
+                    jobs,
+                },
+            )
     }
 
     // ========================================================================

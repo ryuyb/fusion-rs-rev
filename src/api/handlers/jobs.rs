@@ -8,9 +8,9 @@ use crate::error::AppResult;
 use crate::state::AppState;
 use crate::utils::validate::{ValidatedJson, ValidatedQuery};
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
-    Json,
 };
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -150,10 +150,7 @@ async fn update_job(
         ("bearerAuth" = [])
     )
 )]
-async fn delete_job(
-    State(state): State<AppState>,
-    Path(id): Path<i32>,
-) -> AppResult<StatusCode> {
+async fn delete_job(State(state): State<AppState>, Path(id): Path<i32>) -> AppResult<StatusCode> {
     state.services.jobs.delete_job(id).await?;
 
     if let Some(scheduler) = &state.scheduler {

@@ -13,7 +13,7 @@ use crate::jobs::types::{JobContext, JobStatus, JobTask};
 use crate::repositories::{JobExecutionRepository, JobRepository};
 
 /// Tracks concurrent job executions in memory
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ConcurrencyTracker {
     running: Arc<RwLock<HashMap<String, usize>>>,
 }
@@ -74,11 +74,7 @@ impl JobExecutor {
         }
     }
 
-    pub async fn execute_job(
-        &self,
-        job: ScheduledJob,
-        task: Box<dyn JobTask>,
-    ) -> AppResult<()> {
+    pub async fn execute_job(&self, job: ScheduledJob, task: Box<dyn JobTask>) -> AppResult<()> {
         if !self.concurrency.can_execute(&job).await {
             return Err(AppError::UnprocessableContent {
                 message: format!("Concurrency limit reached for job: {}", job.job_name),
@@ -190,7 +186,11 @@ impl JobExecutor {
 
     fn calculate_retry_delay(&self, job: &ScheduledJob, attempt: u32) -> Duration {
         let base_delay = job.retry_delay_seconds as f64;
-        let multiplier = job.retry_backoff_multiplier.to_string().parse::<f64>().unwrap_or(2.0);
+        let multiplier = job
+            .retry_backoff_multiplier
+            .to_string()
+            .parse::<f64>()
+            .unwrap_or(2.0);
         let delay_secs = base_delay * multiplier.powi(attempt as i32);
         Duration::from_secs(delay_secs as u64)
     }
