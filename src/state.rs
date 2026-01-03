@@ -3,8 +3,11 @@
 //! Contains shared services and resources that are accessible
 //! across all request handlers.
 
+use std::sync::Arc;
+
 use crate::config::JwtConfig;
 use crate::db::AsyncDbPool;
+use crate::jobs::JobScheduler;
 use crate::repositories::Repositories;
 use crate::services::Services;
 
@@ -20,6 +23,8 @@ pub struct AppState {
     pub db_pool: AsyncDbPool,
     /// JWT configuration for token generation and validation
     pub jwt_config: JwtConfig,
+    /// Optional job scheduler (only present when jobs are enabled)
+    pub scheduler: Option<Arc<JobScheduler>>,
 }
 
 impl AppState {
@@ -30,19 +35,21 @@ impl AppState {
     /// # Arguments
     /// * `pool` - The async database connection pool
     /// * `jwt_config` - JWT configuration for authentication
+    /// * `scheduler` - Optional job scheduler
     ///
     /// # Example
     /// ```ignore
     /// let pool = establish_async_connection_pool().await?;
-    /// let state = AppState::new(pool, jwt_config);
+    /// let state = AppState::new(pool, jwt_config, None);
     /// ```
-    pub fn new(pool: AsyncDbPool, jwt_config: JwtConfig) -> Self {
+    pub fn new(pool: AsyncDbPool, jwt_config: JwtConfig, scheduler: Option<JobScheduler>) -> Self {
         let repos = Repositories::new(pool.clone());
         let services = Services::new(repos);
         Self {
             services,
             db_pool: pool,
             jwt_config,
+            scheduler: scheduler.map(Arc::new),
         }
     }
 }

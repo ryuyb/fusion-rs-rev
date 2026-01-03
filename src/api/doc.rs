@@ -5,17 +5,13 @@ pub const USER_TAG: &str = "User";
 pub const AUTH_TAG: &str = "Auth";
 pub const HEALTH_TAG: &str = "Health";
 pub const NOTIFICATION_TAG: &str = "Notifications";
+pub const JOB_TAG: &str = "Jobs";
 
 #[derive(OpenApi)]
 #[openapi(
     info(
         title = "Fusion",
         description = "An api server for Fusion",
-    ),
-    paths(
-        crate::api::handlers::health::health_check,
-        crate::api::handlers::health::readiness_check,
-        crate::api::handlers::health::liveness_check,
     ),
     modifiers(&SecurityAddon),
     components(
@@ -28,6 +24,7 @@ pub const NOTIFICATION_TAG: &str = "Notifications";
         (name = AUTH_TAG, description = "Authentication endpoints"),
         (name = HEALTH_TAG, description = "Health check endpoints"),
         (name = NOTIFICATION_TAG, description = "Notification channel and message endpoints"),
+        (name = JOB_TAG, description = "Job scheduling endpoints"),
     )
 )]
 pub struct ApiDoc;

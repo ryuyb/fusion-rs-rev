@@ -108,3 +108,21 @@ max_size = 10485760
 max_files = 5
 # Compress rotated files with gzip
 compress = false
+
+# -----------------------------------------------------------------------------
+# Jobs Configuration
+# -----------------------------------------------------------------------------
+# Job scheduling system settings for background tasks.
+[jobs]
+# Enable job scheduling system
+enabled = false
+# Job execution timeout in seconds
+job_timeout = 300
+# Maximum number of retry attempts for failed jobs
+max_retries = 3
+# Initial retry delay in seconds
+retry_delay = 60
+# Retry backoff multiplier (exponential backoff)
+retry_backoff_multiplier = 2.0
+# Execution history retention in days
+history_retention_days = 30

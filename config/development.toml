@@ -56,3 +56,11 @@ strategy = "size"
 max_size = 10485760
 max_files = 3
 compress = false
+
+# -----------------------------------------------------------------------------
+# Jobs Configuration
+# -----------------------------------------------------------------------------
+# Enable jobs in development for testing
+[jobs]
+enabled = true
+history_retention_days = 7
