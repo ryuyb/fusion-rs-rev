@@ -71,10 +71,9 @@ async fn create_job(
     let new_job = req.into_new_job();
     let job = state.services.jobs.create_job(new_job).await?;
 
-    // TODO: Reload scheduler jobs
-    // if let Some(scheduler) = &state.scheduler {
-    //     scheduler.reload_jobs().await?;
-    // }
+    if let Some(scheduler) = &state.scheduler {
+        scheduler.reload_jobs().await?;
+    }
 
     Ok((StatusCode::CREATED, Json(JobResponse::from(job))))
 }
@@ -128,10 +127,9 @@ async fn update_job(
     let update = req.into_update_job();
     let job = state.services.jobs.update_job(id, update).await?;
 
-    // TODO: Reload scheduler jobs
-    // if let Some(scheduler) = &state.scheduler {
-    //     scheduler.reload_jobs().await?;
-    // }
+    if let Some(scheduler) = &state.scheduler {
+        scheduler.reload_jobs().await?;
+    }
 
     Ok(Json(JobResponse::from(job)))
 }
@@ -158,10 +156,9 @@ async fn delete_job(
 ) -> AppResult<StatusCode> {
     state.services.jobs.delete_job(id).await?;
 
-    // TODO: Reload scheduler jobs
-    // if let Some(scheduler) = &state.scheduler {
-    //     scheduler.reload_jobs().await?;
-    // }
+    if let Some(scheduler) = &state.scheduler {
+        scheduler.reload_jobs().await?;
+    }
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -188,10 +185,9 @@ async fn pause_job(
 ) -> AppResult<Json<JobResponse>> {
     let job = state.services.jobs.pause_job(id).await?;
 
-    // TODO: Reload scheduler jobs
-    // if let Some(scheduler) = &state.scheduler {
-    //     scheduler.reload_jobs().await?;
-    // }
+    if let Some(scheduler) = &state.scheduler {
+        scheduler.reload_jobs().await?;
+    }
 
     Ok(Json(JobResponse::from(job)))
 }
@@ -218,10 +214,9 @@ async fn resume_job(
 ) -> AppResult<Json<JobResponse>> {
     let job = state.services.jobs.resume_job(id).await?;
 
-    // TODO: Reload scheduler jobs
-    // if let Some(scheduler) = &state.scheduler {
-    //     scheduler.reload_jobs().await?;
-    // }
+    if let Some(scheduler) = &state.scheduler {
+        scheduler.reload_jobs().await?;
+    }
 
     Ok(Json(JobResponse::from(job)))
 }

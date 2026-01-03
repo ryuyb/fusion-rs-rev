@@ -92,13 +92,8 @@ impl Server {
         let pool = establish_async_connection_pool(&self.settings.database).await?;
         tracing::info!("Database connection pool initialized");
 
-        // Create application state with services
-        let state = AppState::new(pool.clone(), self.settings.jwt.clone());
-        tracing::info!("Application state created");
-
         // Initialize job scheduler
-        let mut scheduler = None;
-        if self.settings.jobs.enabled {
+        let scheduler = if self.settings.jobs.enabled {
             tracing::info!("Initializing job scheduler");
 
             let mut registry = crate::jobs::JobRegistry::new();
@@ -111,11 +106,17 @@ impl Server {
 
             job_scheduler.start().await?;
             tracing::info!("Job scheduler started");
-            scheduler = Some(job_scheduler);
-        }
+            Some(job_scheduler)
+        } else {
+            None
+        };
+
+        // Create application state with services
+        let state = AppState::new(pool.clone(), self.settings.jwt.clone(), scheduler);
+        tracing::info!("Application state created");
 
         // Create router with all routes and middleware
-        let router = create_router(state);
+        let router = create_router(state.clone());
         tracing::info!("Router configured");
 
         // Bind to the configured address
@@ -133,7 +134,7 @@ impl Server {
             .await?;
 
         // Stop scheduler gracefully
-        if let Some(sched) = scheduler {
+        if let Some(sched) = &state.scheduler {
             tracing::info!("Stopping job scheduler");
             sched.stop().await?;
             tracing::info!("Job scheduler stopped");
