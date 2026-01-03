@@ -2,7 +2,7 @@
 
 use crate::models::{ChannelType, NotificationChannel, NotificationLog, NotificationStatus};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value as JsonValue};
+use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use utoipa::ToSchema;
 use validator::Validate;
