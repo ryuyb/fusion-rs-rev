@@ -487,6 +487,71 @@ impl RotationSettings {
 }
 
 // ============================================================================
+// Jobs Configuration
+// ============================================================================
+
+fn default_job_timeout() -> u64 {
+    300
+}
+
+fn default_max_retries() -> u32 {
+    3
+}
+
+fn default_retry_delay() -> u64 {
+    60
+}
+
+fn default_retry_backoff() -> f64 {
+    2.0
+}
+
+fn default_history_retention_days() -> u32 {
+    30
+}
+
+/// Job scheduling configuration
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct JobsConfig {
+    /// Whether job scheduling is enabled
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Job execution timeout in seconds
+    #[serde(default = "default_job_timeout")]
+    pub job_timeout: u64,
+
+    /// Maximum number of retry attempts
+    #[serde(default = "default_max_retries")]
+    pub max_retries: u32,
+
+    /// Initial retry delay in seconds
+    #[serde(default = "default_retry_delay")]
+    pub retry_delay: u64,
+
+    /// Retry backoff multiplier
+    #[serde(default = "default_retry_backoff")]
+    pub retry_backoff_multiplier: f64,
+
+    /// Execution history retention in days
+    #[serde(default = "default_history_retention_days")]
+    pub history_retention_days: u32,
+}
+
+impl Default for JobsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            job_timeout: default_job_timeout(),
+            max_retries: default_max_retries(),
+            retry_delay: default_retry_delay(),
+            retry_backoff_multiplier: default_retry_backoff(),
+            history_retention_days: default_history_retention_days(),
+        }
+    }
+}
+
+// ============================================================================
 // Main Settings Structure
 // ============================================================================
 
@@ -494,7 +559,7 @@ impl RotationSettings {
 ///
 /// This structure represents the entire configuration that can be loaded
 /// from TOML files and environment variables.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct Settings {
     /// Application information
     #[serde(default)]
@@ -515,6 +580,10 @@ pub struct Settings {
     /// Logger configuration
     #[serde(default)]
     pub logger: LoggerSettings,
+
+    /// Job scheduling configuration
+    #[serde(default)]
+    pub jobs: JobsConfig,
 }
 
 #[cfg(test)]
@@ -670,6 +739,29 @@ mod tests {
             })
     }
 
+    fn arb_jobs_config() -> impl Strategy<Value = JobsConfig> {
+        (
+            any::<bool>(),       // enabled
+            60u64..=600u64,      // job_timeout
+            0u32..=5u32,         // max_retries
+            10u64..=300u64,      // retry_delay
+            1.0f64..=3.0f64,     // retry_backoff_multiplier
+            1u32..=90u32,        // history_retention_days
+        )
+            .prop_map(
+                |(enabled, job_timeout, max_retries, retry_delay, retry_backoff_multiplier, history_retention_days)| {
+                    JobsConfig {
+                        enabled,
+                        job_timeout,
+                        max_retries,
+                        retry_delay,
+                        retry_backoff_multiplier,
+                        history_retention_days,
+                    }
+                },
+            )
+    }
+
     fn arb_settings() -> impl Strategy<Value = Settings> {
         (
             arb_application_config(),
@@ -677,13 +769,15 @@ mod tests {
             arb_database_config(),
             arb_jwt_config(),
             arb_logger_settings(),
+            arb_jobs_config(),
         )
-            .prop_map(|(application, server, database, jwt, logger)| Settings {
+            .prop_map(|(application, server, database, jwt, logger, jobs)| Settings {
                 application,
                 server,
                 database,
                 jwt,
                 logger,
+                jobs,
             })
     }
 
@@ -873,6 +967,17 @@ mod tests {
     }
 
     #[test]
+    fn test_jobs_config_defaults() {
+        let config = JobsConfig::default();
+        assert!(!config.enabled);
+        assert_eq!(config.job_timeout, 300);
+        assert_eq!(config.max_retries, 3);
+        assert_eq!(config.retry_delay, 60);
+        assert_eq!(config.retry_backoff_multiplier, 2.0);
+        assert_eq!(config.history_retention_days, 30);
+    }
+
+    #[test]
     fn test_settings_defaults() {
         let settings = Settings::default();
         assert_eq!(settings.application.name, "fusion-rs");
@@ -881,6 +986,8 @@ mod tests {
         assert_eq!(settings.jwt.access_token_expiration, 1);
         assert_eq!(settings.jwt.refresh_token_expiration, 168);
         assert_eq!(settings.logger.level, "info");
+        assert!(!settings.jobs.enabled);
+        assert_eq!(settings.jobs.job_timeout, 300);
     }
 
     #[test]
