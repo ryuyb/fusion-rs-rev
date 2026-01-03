@@ -1,6 +1,6 @@
 //! Authentication handlers for login and token management.
 
-use axum::{Json, extract::State, http::StatusCode};
+use axum::{extract::State, http::StatusCode, Json};
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 

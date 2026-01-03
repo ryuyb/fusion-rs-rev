@@ -66,11 +66,10 @@ pub fn create_router(state: AppState) -> Router {
 
     let (router, openapi) = OpenApiRouter::with_openapi(ApiDoc::openapi())
         .nest("/api", api_routes)
+        .merge(handlers::health::health_routes())
         .split_for_parts();
 
     router
-        // Add health check routes (no middleware needed for health checks)
-        .merge(handlers::health::health_routes())
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi.clone()))
         // Middleware is applied in reverse order - last added runs first
         // So: global_error_handler -> request_id -> logging

@@ -13,11 +13,6 @@ pub const JOB_TAG: &str = "Jobs";
         title = "Fusion",
         description = "An api server for Fusion",
     ),
-    paths(
-        crate::api::handlers::health::health_check,
-        crate::api::handlers::health::readiness_check,
-        crate::api::handlers::health::liveness_check,
-    ),
     modifiers(&SecurityAddon),
     components(
         schemas(

@@ -5,11 +5,13 @@
 //! - `user` - User-related request/response DTOs
 //! - `notification` - Notification-related request/response DTOs
 //! - `job` - Job scheduling-related request/response DTOs
+//! - `health` - Health check-related response DTOs
 //! - `error` - Common error response DTOs
 //! - `pagination` - Pagination-related DTOs
 
 mod auth;
 mod error;
+mod health;
 mod job;
 mod notification;
 mod pagination;
@@ -20,6 +22,7 @@ pub use auth::{
     RegisterResponse,
 };
 pub use error::ErrorResponse;
+pub use health::{ComponentHealth, HealthResponse, HealthStatus};
 pub use job::{CreateJobRequest, JobExecutionResponse, JobResponse, UpdateJobRequest};
 pub use notification::{
     ChannelResponse, CreateChannelRequest, LogResponse, SendNotificationRequest, SendToUserRequest,
