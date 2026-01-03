@@ -50,6 +50,10 @@ pub fn create_router(state: AppState) -> Router {
     let protected_routes = OpenApiRouter::new()
         .nest("/me", handlers::me::me_routes())
         .nest("/users", handlers::users::user_routes())
+        .nest(
+            "/notifications",
+            handlers::notifications::notification_routes(),
+        )
         .layer(middleware::from_fn_with_state(
             state.clone(),
             auth_middleware,

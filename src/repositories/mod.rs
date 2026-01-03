@@ -2,8 +2,12 @@
 //!
 //! Provides async CRUD operations for all domain entities.
 
+mod notification_channel_repo;
+mod notification_log_repo;
 mod user_repo;
 
+pub use notification_channel_repo::NotificationChannelRepository;
+pub use notification_log_repo::NotificationLogRepository;
 pub use user_repo::UserRepository;
 
 use crate::db::AsyncDbPool;
@@ -15,6 +19,8 @@ use crate::db::AsyncDbPool;
 #[derive(Clone)]
 pub struct Repositories {
     pub users: UserRepository,
+    pub notification_channels: NotificationChannelRepository,
+    pub notification_logs: NotificationLogRepository,
 }
 
 impl Repositories {
@@ -24,7 +30,9 @@ impl Repositories {
     /// * `pool` - The async database connection pool
     pub fn new(pool: AsyncDbPool) -> Self {
         Self {
-            users: UserRepository::new(pool),
+            users: UserRepository::new(pool.clone()),
+            notification_channels: NotificationChannelRepository::new(pool.clone()),
+            notification_logs: NotificationLogRepository::new(pool),
         }
     }
 }
