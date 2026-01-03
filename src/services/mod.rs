@@ -3,9 +3,11 @@
 //! Services encapsulate business logic and coordinate between
 //! repositories and handlers.
 
+mod job_service;
 pub mod notifications;
 mod user_service;
 
+pub use job_service::JobService;
 pub use notifications::NotificationService;
 pub use user_service::UserService;
 
@@ -19,6 +21,7 @@ use crate::repositories::Repositories;
 pub struct Services {
     pub users: UserService,
     pub notifications: NotificationService,
+    pub jobs: JobService,
 }
 
 impl Services {
@@ -30,6 +33,7 @@ impl Services {
                 repos.notification_channels,
                 repos.notification_logs,
             ),
+            jobs: JobService::new(repos.jobs, repos.executions),
         }
     }
 }

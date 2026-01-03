@@ -54,6 +54,7 @@ pub fn create_router(state: AppState) -> Router {
             "/notifications",
             handlers::notifications::notification_routes(),
         )
+        .nest("/jobs", handlers::jobs::job_routes())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             auth_middleware,

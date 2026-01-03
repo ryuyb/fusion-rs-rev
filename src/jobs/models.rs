@@ -52,7 +52,7 @@ pub struct NewScheduledJob {
     pub created_by: Option<String>,
 }
 
-#[derive(Debug, AsChangeset)]
+#[derive(Debug, Default, AsChangeset)]
 #[diesel(table_name = scheduled_jobs)]
 pub struct UpdateScheduledJob {
     pub cron_expression: Option<String>,

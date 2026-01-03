@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use diesel_derive_enum::DbEnum;
 use serde::{Deserialize, Serialize};
 use tokio_util::sync::CancellationToken;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::db::AsyncDbPool;
@@ -19,7 +20,7 @@ pub struct JobContext {
 }
 
 /// Job execution status
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, DbEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, DbEnum, ToSchema)]
 #[db_enum(existing_type_path = "crate::schema::sql_types::JobStatus")]
 #[serde(rename_all = "lowercase")]
 pub enum JobStatus {

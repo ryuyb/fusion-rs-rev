@@ -93,8 +93,26 @@ impl Server {
         tracing::info!("Database connection pool initialized");
 
         // Create application state with services
-        let state = AppState::new(pool, self.settings.jwt.clone());
+        let state = AppState::new(pool.clone(), self.settings.jwt.clone());
         tracing::info!("Application state created");
+
+        // Initialize job scheduler
+        let mut scheduler = None;
+        if self.settings.jobs.enabled {
+            tracing::info!("Initializing job scheduler");
+
+            let mut registry = crate::jobs::JobRegistry::new();
+            registry.register::<crate::jobs::tasks::DataCleanupTask>();
+
+            let job_scheduler = crate::jobs::JobScheduler::new(
+                pool.clone(),
+                registry,
+            ).await?;
+
+            job_scheduler.start().await?;
+            tracing::info!("Job scheduler started");
+            scheduler = Some(job_scheduler);
+        }
 
         // Create router with all routes and middleware
         let router = create_router(state);
@@ -113,6 +131,13 @@ impl Server {
         axum::serve(listener, router)
             .with_graceful_shutdown(shutdown_signal())
             .await?;
+
+        // Stop scheduler gracefully
+        if let Some(sched) = scheduler {
+            tracing::info!("Stopping job scheduler");
+            sched.stop().await?;
+            tracing::info!("Job scheduler stopped");
+        }
 
         tracing::info!("Server shutdown complete");
 
