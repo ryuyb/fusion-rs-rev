@@ -746,6 +746,7 @@ dependencies = [
  "downcast-rs",
  "itoa",
  "pq-sys",
+ "serde_json",
 ]
 
 [[package]]
@@ -990,6 +991,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "argon2",
+ "async-trait",
  "axum",
  "chrono",
  "clap",

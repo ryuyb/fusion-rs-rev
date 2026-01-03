@@ -4,6 +4,7 @@ use utoipa::{Modify, OpenApi};
 pub const USER_TAG: &str = "User";
 pub const AUTH_TAG: &str = "Auth";
 pub const HEALTH_TAG: &str = "Health";
+pub const NOTIFICATION_TAG: &str = "Notifications";
 
 #[derive(OpenApi)]
 #[openapi(
@@ -22,6 +23,12 @@ pub const HEALTH_TAG: &str = "Health";
             crate::api::dto::ErrorResponse,
         )
     ),
+    tags(
+        (name = USER_TAG, description = "User management endpoints"),
+        (name = AUTH_TAG, description = "Authentication endpoints"),
+        (name = HEALTH_TAG, description = "Health check endpoints"),
+        (name = NOTIFICATION_TAG, description = "Notification channel and message endpoints"),
+    )
 )]
 pub struct ApiDoc;
 

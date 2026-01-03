@@ -3,8 +3,10 @@
 //! Services encapsulate business logic and coordinate between
 //! repositories and handlers.
 
+pub mod notifications;
 mod user_service;
 
+pub use notifications::NotificationService;
 pub use user_service::UserService;
 
 use crate::repositories::Repositories;
@@ -16,6 +18,7 @@ use crate::repositories::Repositories;
 #[derive(Clone)]
 pub struct Services {
     pub users: UserService,
+    pub notifications: NotificationService,
 }
 
 impl Services {
@@ -23,6 +26,10 @@ impl Services {
     pub fn new(repos: Repositories) -> Self {
         Self {
             users: UserService::new(repos.users),
+            notifications: NotificationService::new(
+                repos.notification_channels,
+                repos.notification_logs,
+            ),
         }
     }
 }
