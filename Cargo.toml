@@ -9,15 +9,16 @@ tokio = { version = "1.0", features = ["full"] }
 tokio-cron-scheduler = "0.15"
 tokio-util = { version = "0.7" }
 tower-http = { version = "0.6", features = ["cors", "compression-full"] }
-diesel = { version = "2.3", features = ["postgres", "chrono", "serde_json"] }
+diesel = { version = "2.3", features = ["postgres", "chrono", "serde_json", "numeric", "uuid"] }
 # Static linking for PostgreSQL and OpenSSL
 pq-sys = { version = "0.7", features = ["bundled"] }
 openssl-sys = { version = "0.9", features = ["vendored"] }
 diesel-async = { version = "0.7", features = ["postgres", "bb8", "migrations"] }
 diesel_migrations = { version = "2.3" }
+bigdecimal = { version = "0.4", features = ["serde"] }
 thiserror = "2.0"
 config = { version = "0.15", features = ["toml"] }
-uuid = { version = "1.0", features = ["v4"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
 validator = { version = "0.20", features = ["derive"] }
 
 # Async trait support for notification providers
