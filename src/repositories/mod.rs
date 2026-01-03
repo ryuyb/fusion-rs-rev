@@ -2,10 +2,14 @@
 //!
 //! Provides async CRUD operations for all domain entities.
 
+mod job_execution_repo;
+mod job_repo;
 mod notification_channel_repo;
 mod notification_log_repo;
 mod user_repo;
 
+pub use job_execution_repo::JobExecutionRepository;
+pub use job_repo::JobRepository;
 pub use notification_channel_repo::NotificationChannelRepository;
 pub use notification_log_repo::NotificationLogRepository;
 pub use user_repo::UserRepository;
@@ -21,6 +25,8 @@ pub struct Repositories {
     pub users: UserRepository,
     pub notification_channels: NotificationChannelRepository,
     pub notification_logs: NotificationLogRepository,
+    pub jobs: JobRepository,
+    pub executions: JobExecutionRepository,
 }
 
 impl Repositories {
@@ -32,7 +38,9 @@ impl Repositories {
         Self {
             users: UserRepository::new(pool.clone()),
             notification_channels: NotificationChannelRepository::new(pool.clone()),
-            notification_logs: NotificationLogRepository::new(pool),
+            notification_logs: NotificationLogRepository::new(pool.clone()),
+            jobs: JobRepository::new(pool.clone()),
+            executions: JobExecutionRepository::new(pool),
         }
     }
 }

@@ -5,7 +5,7 @@ use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 use crate::db::AsyncDbPool;
-use crate::jobs::error::JobResult;
+use crate::error::AppResult;
 
 /// Job execution context passed to tasks
 #[derive(Clone)]
@@ -53,7 +53,7 @@ pub trait JobTask: Send + Sync + std::fmt::Debug {
         Self: Sized;
 
     /// Execute the task
-    async fn execute(&self, ctx: JobContext) -> JobResult<()>;
+    async fn execute(&self, ctx: JobContext) -> AppResult<()>;
 
     /// Optional description
     fn description(&self) -> Option<String> {
