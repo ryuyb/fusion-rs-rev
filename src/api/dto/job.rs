@@ -13,6 +13,20 @@ use validator::Validate;
 
 /// Request body for creating a new scheduled job.
 #[derive(Debug, Deserialize, ToSchema, Validate)]
+#[schema(example = json!({
+    "job_name": "daily_cleanup",
+    "job_type": "data_cleanup",
+    "cron_expression": "0 0 2 * * * *",
+    "enabled": true,
+    "allow_concurrent": false,
+    "max_concurrent": 1,
+    "max_retries": 3,
+    "timeout_seconds": 300,
+    "payload": {
+        "retention_days": 30
+    },
+    "description": "Clean up old job execution records"
+}))]
 pub struct CreateJobRequest {
     #[validate(length(min = 1, max = 255, message = "Job name must be between 1 and 255 characters"))]
     #[schema(example = "daily_cleanup")]
@@ -45,7 +59,7 @@ pub struct CreateJobRequest {
     #[schema(example = 300)]
     pub timeout_seconds: i32,
 
-    #[schema(example = json!({"retention_days": 30}))]
+    #[schema(value_type = Option<Object>, example = json!({"retention_days": 30}))]
     pub payload: Option<JsonValue>,
 
     #[schema(example = "Clean up old job execution records")]
