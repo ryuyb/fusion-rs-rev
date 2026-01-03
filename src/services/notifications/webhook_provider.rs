@@ -2,15 +2,14 @@
 //!
 //! Sends HTTP requests to configured webhook URLs using the global HTTP_CLIENT.
 
-use async_trait::async_trait;
-use reqwest::Method;
-use serde_json::json;
-use std::time::Instant;
-
 use super::provider::{NotificationMessage, NotificationProvider, NotificationResult};
 use crate::error::{AppError, AppResult};
 use crate::external::client::HTTP_CLIENT;
 use crate::models::WebhookConfig;
+use async_trait::async_trait;
+use reqwest::{Method, Url};
+use serde_json::json;
+use std::time::Instant;
 
 /// Webhook notification provider
 ///
@@ -130,11 +129,15 @@ impl NotificationProvider for WebhookProvider {
     /// # Returns
     /// Ok(()) if valid, Err with validation details otherwise
     async fn validate_config(&self) -> AppResult<()> {
-        // Validate URL format
-        if !self.config.url.starts_with("http://") && !self.config.url.starts_with("https://") {
+        let url = Url::parse(&self.config.url).map_err(|_| AppError::Validation {
+            field: "url".to_string(),
+            reason: "Invalid URL format".to_string(),
+        })?;
+
+        if url.scheme() != "https" {
             return Err(AppError::Validation {
                 field: "url".to_string(),
-                reason: "URL must start with http:// or https://".to_string(),
+                reason: "Only HTTPS URLs are allowed".to_string(),
             });
         }
 
