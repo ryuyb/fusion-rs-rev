@@ -50,28 +50,37 @@ pub fn notification_routes() -> OpenApiRouter<AppState> {
 
 /// GET /api/notifications/channels - List user's channels
 ///
-/// Returns all notification channels for the authenticated user.
+/// Returns all notification channels for the authenticated user with pagination support.
 #[utoipa::path(
     get,
     path = "/channels",
     tag = NOTIFICATION_TAG,
+    params(PaginationParams),
     responses(
-        (status = 200, description = "List of channels", body = Vec<ChannelResponse>)
+        (status = 200, description = "Paginated list of channels", body = PagedResponse<ChannelResponse>)
     ),
     security(("bearerAuth" = []))
 )]
 async fn list_channels(
     State(state): State<AppState>,
     Extension(auth_user): Extension<AuthUser>,
-) -> AppResult<Json<Vec<ChannelResponse>>> {
-    let channels = state
+    ValidatedQuery(params): ValidatedQuery<PaginationParams>,
+) -> AppResult<Json<PagedResponse<ChannelResponse>>> {
+    let params = params.normalize();
+
+    let (channels, total_count) = state
         .services
         .notifications
-        .list_user_channels(auth_user.user_id)
+        .list_user_channels_paginated(
+            auth_user.user_id,
+            params.offset() as i64,
+            params.limit() as i64,
+        )
         .await?;
 
     let responses: Vec<ChannelResponse> = channels.into_iter().map(ChannelResponse::from).collect();
-    Ok(Json(responses))
+    let paged_response = PagedResponse::new(responses, &params, total_count as u64);
+    Ok(Json(paged_response))
 }
 
 /// POST /api/notifications/channels - Create channel

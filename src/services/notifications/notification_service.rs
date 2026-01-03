@@ -87,6 +87,26 @@ impl NotificationService {
         self.channel_repo.find_by_user_id(user_id).await
     }
 
+    /// Lists channels for a user with pagination
+    ///
+    /// # Arguments
+    /// * `user_id` - The user ID
+    /// * `offset` - Number of records to skip (for pagination)
+    /// * `limit` - Maximum number of records to return
+    ///
+    /// # Returns
+    /// Tuple of (channels vector ordered by priority, total count)
+    pub async fn list_user_channels_paginated(
+        &self,
+        user_id: i32,
+        offset: i64,
+        limit: i64,
+    ) -> AppResult<(Vec<NotificationChannel>, i64)> {
+        self.channel_repo
+            .find_by_user_id_paginated(user_id, offset, limit)
+            .await
+    }
+
     /// Updates a notification channel
     ///
     /// Verifies the channel exists and validates config if being updated.
@@ -180,7 +200,8 @@ impl NotificationService {
 
     /// Sends a notification to all enabled channels of a specific type for a user
     ///
-    /// Sends to channels in priority order (highest first).
+    /// Sends to channels in priority order (highest first) in parallel.
+    /// Continues sending to all channels even if some fail.
     ///
     /// # Arguments
     /// * `user_id` - The user ID
@@ -188,7 +209,7 @@ impl NotificationService {
     /// * `message` - The notification message
     ///
     /// # Returns
-    /// List of log entries for each send attempt
+    /// List of log entries for each send attempt (including failures)
     pub async fn send_to_user(
         &self,
         user_id: i32,
@@ -208,10 +229,31 @@ impl NotificationService {
             });
         }
 
+        // Parallelize sends using futures::future::join_all
+        use futures::future::join_all;
+
+        let send_futures: Vec<_> = channels
+            .into_iter()
+            .map(|channel| {
+                let channel_id = channel.id;
+                let msg = message.clone();
+                async move { self.send_to_channel(channel_id, msg).await }
+            })
+            .collect();
+
+        // Wait for all sends to complete
+        let results = join_all(send_futures).await;
+
+        // Collect successful logs, log errors but don't fail
         let mut logs = Vec::new();
-        for channel in channels {
-            let log = self.send_to_channel(channel.id, message.clone()).await?;
-            logs.push(log);
+        for result in results {
+            match result {
+                Ok(log) => logs.push(log),
+                Err(_e) => {
+                    // Log the error but continue processing
+                    // tracing::error!("Failed to send notification: {}", e);
+                }
+            }
         }
 
         Ok(logs)

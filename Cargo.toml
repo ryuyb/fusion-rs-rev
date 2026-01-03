@@ -20,6 +20,7 @@ validator = { version = "0.20", features = ["derive"] }
 
 # Async trait support for notification providers
 async-trait = "0.1"
+futures = "0.3"
 
 reqwest = { version = "0.13.0-rc", features = ["rustls", "stream", "json", "deflate", "gzip", "brotli", "zstd", "socks", "cookies", "charset", "http2", "system-proxy"], default-features = false}
 rand = "0.9"

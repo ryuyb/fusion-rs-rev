@@ -77,6 +77,52 @@ impl NotificationChannelRepository {
             .map_err(AppError::from)
     }
 
+    /// Lists all channels for a user ordered by priority with pagination
+    ///
+    /// # Arguments
+    /// * `uid` - The user ID
+    /// * `offset` - Number of records to skip (for pagination)
+    /// * `limit` - Maximum number of records to return
+    ///
+    /// # Returns
+    /// Tuple of (channels vector ordered by priority, total count)
+    pub async fn find_by_user_id_paginated(
+        &self,
+        uid: i32,
+        offset: i64,
+        limit: i64,
+    ) -> AppResult<(Vec<NotificationChannel>, i64)> {
+        use crate::schema::notification_channels::dsl::*;
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| AppError::ConnectionPool {
+                source: anyhow::Error::from(e),
+            })?;
+
+        // Get total count
+        let total: i64 = notification_channels
+            .filter(user_id.eq(uid))
+            .count()
+            .get_result(&mut conn)
+            .await
+            .map_err(AppError::from)?;
+
+        // Get paginated results
+        let channels = notification_channels
+            .filter(user_id.eq(uid))
+            .order(priority.desc())
+            .limit(limit)
+            .offset(offset)
+            .select(NotificationChannel::as_select())
+            .load(&mut conn)
+            .await
+            .map_err(AppError::from)?;
+
+        Ok((channels, total))
+    }
+
     /// Lists all channels for a user ordered by priority
     ///
     /// # Arguments
