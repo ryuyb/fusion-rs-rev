@@ -8,18 +8,26 @@ use crate::external::live::provider::LivePlatformProvider;
 use crate::external::live::types::{AnchorInfo, LiveStatus, RoomInfo, RoomStatusInfo};
 use crate::external::user_agent::{Browser, Platform, USER_AGENT_POOL};
 use async_trait::async_trait;
+use futures::future::join_all;
 use rand::Rng;
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
+use tracing::warn;
 
 const ENTER_ROOM_API: &str = "https://live.douyin.com/webcast/room/web/enter/";
 const USER_PROFILE_API: &str = "https://live.douyin.com/webcast/user/profile/";
 const LIVE_HOME_URL: &str = "https://live.douyin.com/";
 
 static COOKIE_CACHE: LazyLock<RwLock<Option<CookieCache>>> = LazyLock::new(|| RwLock::new(None));
+static LIVE_URL_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^https?://live\.douyin\.com/([a-zA-Z0-9]+)").unwrap());
+static WEB_RID_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#""webRid\\\":\\\"(\d+)\\\""#).unwrap());
+static UNIQUE_ID_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"\\\"uniqueId\\\":\\\"(.*?)\\\""#).unwrap());
 
 struct CookieCache {
     cookies: String,
@@ -42,10 +50,7 @@ impl DouyinLive {
     }
 
     pub async fn resolve_short_url(&self, short_url: &str) -> crate::error::AppResult<String> {
-        if let Some(caps) = Regex::new(r"^https?://live\.douyin\.com/([a-zA-Z0-9]+)")
-            .unwrap()
-            .captures(short_url)
-        {
+        if let Some(caps) = LIVE_URL_REGEX.captures(short_url) {
             return Ok(caps[1].to_string());
         }
 
@@ -83,8 +88,7 @@ impl DouyinLive {
             )
         })?;
 
-        Regex::new(r#""webRid\\":\\"(\d+)\\""#)
-            .unwrap()
+        WEB_RID_REGEX
             .captures(&body)
             .map(|c| c[1].to_string())
             .ok_or_else(|| {
@@ -125,8 +129,7 @@ impl DouyinLive {
                 )
             })?;
 
-        Regex::new(r#"\\\"uniqueId\\\":\\\"(.*?)\\\""#)
-            .unwrap()
+        UNIQUE_ID_REGEX
             .captures(&body)
             .map(|c| c[1].to_string())
             .ok_or_else(|| Self::make_error(format!("parse_user({url}) uniqueId not found"), None))
@@ -385,36 +388,50 @@ impl LivePlatformProvider for DouyinLive {
     ) -> crate::error::AppResult<HashMap<String, RoomStatusInfo>> {
         let mut result = HashMap::new();
 
-        for uid in uids {
-            let anchor = match self.get_anchor_info(uid).await {
-                Ok(a) => a,
-                Err(_) => continue,
-            };
+        for chunk in uids.chunks(3) {
+            let futures = chunk.iter().map(|&uid| async move {
+                let anchor = match self.get_anchor_info(uid).await {
+                    Ok(a) => a,
+                    Err(e) => {
+                        warn!("Failed to get anchor info for {}: {}", uid, e);
+                        return None;
+                    }
+                };
 
-            let room_id = match anchor.room_id {
-                Some(ref id) if !id.is_empty() => id.clone(),
-                _ => continue,
-            };
+                let room_id = match anchor.room_id {
+                    Some(ref id) if !id.is_empty() => id.clone(),
+                    _ => {
+                        warn!("No room_id found for uid {}", uid);
+                        return None;
+                    }
+                };
 
-            let room = match self.get_room_info(&room_id).await {
-                Ok(r) => r,
-                Err(_) => continue,
-            };
+                let room = match self.get_room_info(&room_id).await {
+                    Ok(r) => r,
+                    Err(e) => {
+                        warn!("Failed to get room info for room_id {}: {}", room_id, e);
+                        return None;
+                    }
+                };
 
-            result.insert(
-                uid.to_string(),
-                RoomStatusInfo {
-                    uid: anchor.uid,
-                    room_id: room.room_id,
-                    title: room.title,
-                    live_status: room.live_status,
-                    online: room.online,
-                    uname: anchor.name,
-                    face: anchor.avatar_url,
-                    cover_url: room.cover_url,
-                    area_name: room.area_name,
-                },
-            );
+                Some((
+                    uid.to_string(),
+                    RoomStatusInfo {
+                        uid: anchor.uid,
+                        room_id: room.room_id,
+                        title: room.title,
+                        live_status: room.live_status,
+                        online: room.online,
+                        uname: anchor.name,
+                        face: anchor.avatar_url,
+                        cover_url: room.cover_url,
+                        area_name: room.area_name,
+                    },
+                ))
+            });
+
+            let chunk_results = join_all(futures).await;
+            result.extend(chunk_results.into_iter().flatten());
         }
 
         Ok(result)
