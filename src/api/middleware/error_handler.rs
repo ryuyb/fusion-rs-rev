@@ -162,6 +162,22 @@ impl IntoResponse for AppError {
                     ErrorResponse::new("INTERNAL_ERROR", "An internal error occurred"),
                 )
             }
+            AppError::ExternalApi {
+                platform,
+                message,
+                source,
+            } => {
+                tracing::error!(
+                    platform = %platform,
+                    message = %message,
+                    error = ?source,
+                    "External API error occurred"
+                );
+                (
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    ErrorResponse::external_api_error(platform, message),
+                )
+            }
         };
 
         (status, Json(error_response)).into_response()
@@ -332,6 +348,7 @@ pub fn error_to_status_code(error: &AppError) -> StatusCode {
         AppError::Configuration { .. } => StatusCode::INTERNAL_SERVER_ERROR,
         AppError::ConnectionPool { .. } => StatusCode::SERVICE_UNAVAILABLE,
         AppError::Internal { .. } => StatusCode::INTERNAL_SERVER_ERROR,
+        AppError::ExternalApi { .. } => StatusCode::SERVICE_UNAVAILABLE,
     }
 }
 
@@ -353,6 +370,7 @@ pub fn error_to_code(error: &AppError) -> &'static str {
         AppError::Configuration { .. } => "CONFIGURATION_ERROR",
         AppError::ConnectionPool { .. } => "SERVICE_UNAVAILABLE",
         AppError::Internal { .. } => "INTERNAL_ERROR",
+        AppError::ExternalApi { .. } => "EXTERNAL_API_ERROR",
     }
 }
 

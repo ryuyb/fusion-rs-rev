@@ -86,6 +86,15 @@ pub enum AppError {
         #[source]
         source: anyhow::Error,
     },
+
+    /// External API call error (e.g., third-party service unavailable)
+    #[error("External API error: {platform} - {message}")]
+    ExternalApi {
+        platform: String,
+        message: String,
+        #[source]
+        source: Option<anyhow::Error>,
+    },
 }
 
 impl From<anyhow::Error> for AppError {
