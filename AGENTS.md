@@ -152,3 +152,38 @@ proptest! {
 ## Configuration
 
 TOML files in `config/`. Environment variables override file settings.
+
+## Git Commit Messages
+
+Follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>: <description>
+
+[optional body]
+```
+
+### Types
+- `feat` - New feature
+- `fix` - Bug fix
+- `refactor` - Code change that neither fixes a bug nor adds a feature
+- `docs` - Documentation only
+- `test` - Adding or updating tests
+- `chore` - Maintenance tasks (deps, configs)
+- `perf` - Performance improvement
+- `ci` - CI/CD changes
+
+### Examples
+```
+feat: add user authentication endpoint
+fix: resolve database connection timeout
+refactor: extract validation logic to separate module
+docs: update API documentation
+chore: upgrade diesel to 2.3
+```
+
+### Rules
+- Use imperative mood ("add" not "added")
+- Lowercase first letter after type
+- No period at end
+- Keep subject line under 72 characters
