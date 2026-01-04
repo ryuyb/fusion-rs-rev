@@ -350,7 +350,14 @@ impl LivePlatformProvider for DouyinLive {
             ));
         }
 
-        let profile = data.data.and_then(|d| d.user_profile).ok_or_else(|| {
+        let resp_data = data.data.ok_or_else(|| {
+            Self::make_error(
+                format!("get_anchor_info({}) no data in response", uid),
+                None,
+            )
+        })?;
+
+        let profile = resp_data.user_profile.ok_or_else(|| {
             Self::make_error(
                 format!("get_anchor_info({}) no user_profile in response", uid),
                 None,
@@ -358,6 +365,7 @@ impl LivePlatformProvider for DouyinLive {
         })?;
 
         let base = profile.base_info.unwrap_or_default();
+        let web_rid = resp_data.user_data.and_then(|u| u.web_rid);
 
         Ok(AnchorInfo {
             uid: base.id_str.unwrap_or_else(|| uid.to_string()),
@@ -367,18 +375,49 @@ impl LivePlatformProvider for DouyinLive {
                 .and_then(|a| a.url_list)
                 .and_then(|l| l.into_iter().next()),
             follower_count: profile.follow_info.and_then(|f| f.follower_count),
-            room_id: profile
-                .own_room
-                .and_then(|r| r.room_ids_str)
-                .and_then(|l| l.into_iter().next()),
+            room_id: web_rid,
         })
     }
 
     async fn get_rooms_status_by_uids(
         &self,
-        _uids: &[&str],
+        uids: &[&str],
     ) -> crate::error::AppResult<HashMap<String, RoomStatusInfo>> {
-        todo!("DouyinLive::get_rooms_status_by_uids")
+        let mut result = HashMap::new();
+
+        for uid in uids {
+            let anchor = match self.get_anchor_info(uid).await {
+                Ok(a) => a,
+                Err(_) => continue,
+            };
+
+            let room_id = match anchor.room_id {
+                Some(ref id) if !id.is_empty() => id.clone(),
+                _ => continue,
+            };
+
+            let room = match self.get_room_info(&room_id).await {
+                Ok(r) => r,
+                Err(_) => continue,
+            };
+
+            result.insert(
+                uid.to_string(),
+                RoomStatusInfo {
+                    uid: anchor.uid,
+                    room_id: room.room_id,
+                    title: room.title,
+                    live_status: room.live_status,
+                    online: room.online,
+                    uname: anchor.name,
+                    face: anchor.avatar_url,
+                    cover_url: room.cover_url,
+                    area_name: room.area_name,
+                },
+            );
+        }
+
+        Ok(result)
     }
 }
 
@@ -458,5 +497,14 @@ mod tests {
         assert!(!anchor.uid.is_empty());
         assert!(!anchor.name.is_empty());
         assert!(anchor.follower_count.is_some());
+    }
+
+    #[tokio::test]
+    #[ignore = "requires network access"]
+    async fn test_get_rooms_status_by_uids_real_api() {
+        let client = DouyinLive::new();
+        let uids = vec!["103361859643", "105649654632"];
+        let result = client.get_rooms_status_by_uids(&uids).await;
+        assert!(result.is_ok(), "Failed: {:?}", result.err());
     }
 }

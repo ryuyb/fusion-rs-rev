@@ -56,13 +56,13 @@ pub struct DouyinUserProfileResp {
 #[derive(Debug, Deserialize)]
 pub struct DouyinUserProfileData {
     pub user_profile: Option<DouyinUserProfile>,
+    pub user_data: Option<DouyinUserData>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct DouyinUserProfile {
     pub base_info: Option<DouyinBaseInfo>,
     pub follow_info: Option<DouyinFollowInfo>,
-    pub own_room: Option<DouyinOwnRoom>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -72,12 +72,12 @@ pub struct DouyinBaseInfo {
     pub avatar_thumb: Option<DouyinAvatarThumb>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct DouyinFollowInfo {
-    pub follower_count: Option<u64>,
+#[derive(Debug, Default, Deserialize)]
+pub struct DouyinUserData {
+    pub web_rid: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct DouyinOwnRoom {
-    pub room_ids_str: Option<Vec<String>>,
+pub struct DouyinFollowInfo {
+    pub follower_count: Option<u64>,
 }
