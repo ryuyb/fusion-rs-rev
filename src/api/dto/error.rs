@@ -72,6 +72,16 @@ impl ErrorResponse {
             })),
         }
     }
+
+    pub fn external_api_error(platform: &str, message: &str) -> Self {
+        Self {
+            code: "EXTERNAL_API_ERROR".to_string(),
+            message: format!("External API error: {} - {}", platform, message),
+            details: Some(json!({
+                "platform": platform
+            })),
+        }
+    }
 }
 
 #[cfg(test)]
