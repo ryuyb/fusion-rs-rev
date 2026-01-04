@@ -43,16 +43,30 @@ impl LivePlatformProvider for BilibiliLive {
             .get(&url)
             .send()
             .await
-            .map_err(|e: reqwest::Error| Self::make_error("request failed", Some(e.into())))?;
+            .map_err(|e: reqwest::Error| {
+                Self::make_error(
+                    format!("get_room_info({}) request failed: {}", room_id, e),
+                    Some(e.into()),
+                )
+            })?
+            .error_for_status()
+            .map_err(|e: reqwest::Error| {
+                Self::make_error(
+                    format!("get_room_info({}) HTTP error: {}", room_id, e),
+                    Some(e.into()),
+                )
+            })?;
 
-        let data: BiliResponse<BiliRoomData> = resp
-            .json()
-            .await
-            .map_err(|e: reqwest::Error| Self::make_error("invalid response", Some(e.into())))?;
+        let data: BiliResponse<BiliRoomData> = resp.json().await.map_err(|e: reqwest::Error| {
+            Self::make_error(
+                format!("get_room_info({}) invalid JSON: {}", room_id, e),
+                Some(e.into()),
+            )
+        })?;
 
         if data.code != 0 {
             return Err(Self::make_error(
-                format!("API error code: {}", data.code),
+                format!("get_room_info({}) API error code: {}", room_id, data.code),
                 None,
             ));
         }
@@ -78,16 +92,31 @@ impl LivePlatformProvider for BilibiliLive {
             .get(&url)
             .send()
             .await
-            .map_err(|e: reqwest::Error| Self::make_error("request failed", Some(e.into())))?;
+            .map_err(|e: reqwest::Error| {
+                Self::make_error(
+                    format!("get_anchor_info({}) request failed: {}", uid, e),
+                    Some(e.into()),
+                )
+            })?
+            .error_for_status()
+            .map_err(|e: reqwest::Error| {
+                Self::make_error(
+                    format!("get_anchor_info({}) HTTP error: {}", uid, e),
+                    Some(e.into()),
+                )
+            })?;
 
-        let data: BiliResponse<BiliAnchorData> = resp
-            .json()
-            .await
-            .map_err(|e: reqwest::Error| Self::make_error("invalid response", Some(e.into())))?;
+        let data: BiliResponse<BiliAnchorData> =
+            resp.json().await.map_err(|e: reqwest::Error| {
+                Self::make_error(
+                    format!("get_anchor_info({}) invalid JSON: {}", uid, e),
+                    Some(e.into()),
+                )
+            })?;
 
         if data.code != 0 {
             return Err(Self::make_error(
-                format!("API error code: {}", data.code),
+                format!("get_anchor_info({}) API error code: {}", uid, data.code),
                 None,
             ));
         }
