@@ -102,3 +102,75 @@ impl LivePlatformProvider for BilibiliLive {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_platform_returns_bilibili() {
+        let client = BilibiliLive::new();
+        assert_eq!(client.platform(), LivePlatform::Bilibili);
+    }
+
+    #[test]
+    fn test_default_impl() {
+        let _client: BilibiliLive = Default::default();
+    }
+
+    #[test]
+    fn test_make_error_without_source() {
+        let err = BilibiliLive::make_error("test error", None);
+        match err {
+            AppError::ExternalApi {
+                platform,
+                message,
+                source,
+            } => {
+                assert_eq!(platform, "bilibili");
+                assert_eq!(message, "test error");
+                assert!(source.is_none());
+            }
+            _ => panic!("Expected ExternalApi error"),
+        }
+    }
+
+    #[test]
+    fn test_make_error_with_source() {
+        let source_err = anyhow::anyhow!("source error");
+        let err = BilibiliLive::make_error("test error", Some(source_err));
+        match err {
+            AppError::ExternalApi {
+                platform,
+                message,
+                source,
+            } => {
+                assert_eq!(platform, "bilibili");
+                assert_eq!(message, "test error");
+                assert!(source.is_some());
+            }
+            _ => panic!("Expected ExternalApi error"),
+        }
+    }
+
+    #[tokio::test]
+    #[ignore = "requires network access"]
+    async fn test_get_room_info_real_api() {
+        let client = BilibiliLive::new();
+        let result = client.get_room_info("1").await;
+        assert!(result.is_ok());
+        let room = result.unwrap();
+        assert_eq!(room.room_id, "5440");
+    }
+
+    #[tokio::test]
+    #[ignore = "requires network access"]
+    async fn test_get_anchor_info_real_api() {
+        let client = BilibiliLive::new();
+        let result = client.get_anchor_info("9617619").await;
+        assert!(result.is_ok());
+        let anchor = result.unwrap();
+        assert_eq!(anchor.uid, "9617619");
+        assert!(!anchor.name.is_empty());
+    }
+}
