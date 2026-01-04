@@ -1,6 +1,6 @@
 use super::abogus::ABogus;
 use super::sign::get_ac_signature;
-use super::types::DouyinEnterRoomResp;
+use super::types::{DouyinEnterRoomResp, DouyinUserProfileResp};
 use crate::error::AppError;
 use crate::external::client::HTTP_CLIENT;
 use crate::external::live::platform::LivePlatform;
@@ -16,6 +16,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 
 const ENTER_ROOM_API: &str = "https://live.douyin.com/webcast/room/web/enter/";
+const USER_PROFILE_API: &str = "https://live.douyin.com/webcast/user/profile/";
 const LIVE_HOME_URL: &str = "https://live.douyin.com/";
 
 static COOKIE_CACHE: LazyLock<RwLock<Option<CookieCache>>> = LazyLock::new(|| RwLock::new(None));
@@ -266,6 +267,11 @@ impl LivePlatformProvider for DouyinLive {
                 .as_ref()
                 .and_then(|r| r.id_str.clone())
                 .unwrap_or_else(|| room_id.to_string()),
+            uid: room
+                .as_ref()
+                .and_then(|r| r.owner.as_ref())
+                .and_then(|o| o.id_str.clone())
+                .unwrap_or_default(),
             title: room
                 .as_ref()
                 .and_then(|r| r.title.clone())
@@ -294,8 +300,78 @@ impl LivePlatformProvider for DouyinLive {
         })
     }
 
-    async fn get_anchor_info(&self, _uid: &str) -> crate::error::AppResult<AnchorInfo> {
-        todo!("DouyinLive::get_anchor_info")
+    async fn get_anchor_info(&self, uid: &str) -> crate::error::AppResult<AnchorInfo> {
+        let cookies = Self::get_cookie().await?;
+        let ua = USER_AGENT_POOL.get(Browser::Chrome, Platform::Windows);
+
+        let params = format!(
+            "aid=6383&app_name=douyin_web&live_id=1&device_platform=web&language=zh-CN&enter_from=web_live&cookie_enabled=true&screen_width=1920&screen_height=1080&browser_language=zh-CN&browser_platform=Win32&browser_name=Chrome&browser_version=131.0.0.0&target_uid={}&anchor_id={}",
+            uid, uid
+        );
+
+        let mut abogus = ABogus::new(ua);
+        let a_bogus = abogus.generate(&params);
+        let url = format!("{}?{}&a_bogus={}", USER_PROFILE_API, params, a_bogus);
+
+        let resp = HTTP_CLIENT
+            .get(&url)
+            .header("User-Agent", ua)
+            .header("Cookie", &cookies)
+            .send()
+            .await
+            .map_err(|e| {
+                Self::make_error(
+                    format!("get_anchor_info({}) request failed: {}", uid, e),
+                    Some(e.into()),
+                )
+            })?
+            .error_for_status()
+            .map_err(|e| {
+                Self::make_error(
+                    format!("get_anchor_info({}) HTTP error: {}", uid, e),
+                    Some(e.into()),
+                )
+            })?;
+
+        let data: DouyinUserProfileResp = resp.json().await.map_err(|e| {
+            Self::make_error(
+                format!("get_anchor_info({}) invalid JSON: {}", uid, e),
+                Some(e.into()),
+            )
+        })?;
+
+        if data.status_code != 0 {
+            return Err(Self::make_error(
+                format!(
+                    "get_anchor_info({}) API error code: {}",
+                    uid, data.status_code
+                ),
+                None,
+            ));
+        }
+
+        let profile = data.data.and_then(|d| d.user_profile).ok_or_else(|| {
+            Self::make_error(
+                format!("get_anchor_info({}) no user_profile in response", uid),
+                None,
+            )
+        })?;
+
+        let base = profile.base_info.unwrap_or_default();
+
+        Ok(AnchorInfo {
+            uid: base.id_str.unwrap_or_else(|| uid.to_string()),
+            name: base.nickname.unwrap_or_default(),
+            avatar_url: base
+                .avatar_thumb
+                .and_then(|a| a.url_list)
+                .and_then(|l| l.into_iter().next()),
+            follower_count: profile.follow_info.and_then(|f| f.follower_count),
+            room_id: profile
+                .own_room
+                .and_then(|r| r.room_ids_str)
+                .and_then(|l| l.into_iter().next()),
+        })
     }
 
     async fn get_rooms_status_by_uids(
@@ -370,5 +446,17 @@ mod tests {
         assert!(result.is_ok(), "Failed: {:?}", result.err());
         let room = result.unwrap();
         assert!(!room.room_id.is_empty());
+    }
+
+    #[tokio::test]
+    #[ignore = "requires network access"]
+    async fn test_get_anchor_info_real_api() {
+        let client = DouyinLive::new();
+        let result = client.get_anchor_info("103361859643").await;
+        assert!(result.is_ok(), "Failed: {:?}", result.err());
+        let anchor = result.unwrap();
+        assert!(!anchor.uid.is_empty());
+        assert!(!anchor.name.is_empty());
+        assert!(anchor.follower_count.is_some());
     }
 }

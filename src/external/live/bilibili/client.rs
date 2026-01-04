@@ -85,6 +85,7 @@ impl LivePlatformProvider for BilibiliLive {
         let d = data.data;
         Ok(RoomInfo {
             room_id: d.room_id.to_string(),
+            uid: d.uid.to_string(),
             title: d.title,
             live_status: Self::parse_live_status(d.live_status),
             online: d.online,

@@ -10,6 +10,7 @@ pub(super) struct BiliResponse<T> {
 #[derive(Debug, Deserialize)]
 pub(super) struct BiliRoomData {
     pub room_id: u64,
+    pub uid: u64,
     pub title: String,
     pub live_status: u8,
     pub online: u64,
