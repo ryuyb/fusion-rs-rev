@@ -105,8 +105,8 @@ impl From<User> for UserResponse {
             id: user.id,
             username: user.username,
             email: user.email,
-            created_at: user.created_at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
-            updated_at: user.updated_at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
+            created_at: user.created_at.to_jiff().to_string(),
+            updated_at: user.updated_at.to_jiff().to_string(),
         }
     }
 }

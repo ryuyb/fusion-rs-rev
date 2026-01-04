@@ -3,8 +3,8 @@
 //! This module provides data models for the notification system including
 //! notification channels and logs.
 
-use chrono::NaiveDateTime;
 use diesel::prelude::*;
+use jiff_diesel::DateTime;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
@@ -61,7 +61,7 @@ pub enum NotificationStatus {
 // ============================================================================
 
 /// NotificationChannel query model for SELECT operations
-#[derive(Debug, Queryable, Selectable, Serialize, Clone)]
+#[derive(Debug, Queryable, Selectable, Clone)]
 #[diesel(table_name = crate::schema::notification_channels)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct NotificationChannel {
@@ -72,8 +72,8 @@ pub struct NotificationChannel {
     pub config: JsonValue,
     pub enabled: bool,
     pub priority: i32,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
+    pub created_at: DateTime,
+    pub updated_at: DateTime,
 }
 
 /// NewNotificationChannel insert model for INSERT operations
@@ -103,7 +103,7 @@ pub struct UpdateNotificationChannel {
 // ============================================================================
 
 /// NotificationLog query model for SELECT operations
-#[derive(Debug, Queryable, Selectable, Serialize, Clone)]
+#[derive(Debug, Queryable, Selectable, Clone)]
 #[diesel(table_name = crate::schema::notification_logs)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct NotificationLog {
@@ -113,7 +113,7 @@ pub struct NotificationLog {
     pub status: NotificationStatus,
     pub error_message: Option<String>,
     pub retry_count: i32,
-    pub sent_at: NaiveDateTime,
+    pub sent_at: DateTime,
 }
 
 /// NewNotificationLog insert model for INSERT operations

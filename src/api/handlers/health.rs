@@ -77,7 +77,7 @@ pub async fn health_check(
     let response = HealthResponse {
         status: overall_status,
         version: env!("CARGO_PKG_VERSION").to_string(),
-        timestamp: chrono::Utc::now().to_rfc3339(),
+        timestamp: jiff::Timestamp::now().to_string(),
         checks,
     };
 

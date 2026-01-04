@@ -9,3 +9,7 @@ run = "cargo install diesel_cli --no-default-features --features postgres"
 description = "Generate a new diesel migration"
 run = "diesel migration generate"
 alias = "mig"
+
+[tasks.setup-hooks]
+description = "Setup git hooks"
+run = "bash scripts/setup-hooks.sh"

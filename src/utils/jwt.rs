@@ -1,5 +1,5 @@
 use crate::error::{AppError, AppResult};
-use chrono::{Duration, Utc};
+use jiff::Timestamp;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 
@@ -46,16 +46,16 @@ impl Claims {
         token_type: TokenType,
         expiration_hours: i64,
     ) -> Self {
-        let now = Utc::now();
-        let exp = now + Duration::hours(expiration_hours);
+        let now = Timestamp::now();
+        let exp = now + jiff::SignedDuration::from_hours(expiration_hours);
 
         Self {
             sub: user_id.to_string(),
             email,
             username,
             token_type,
-            iat: now.timestamp(),
-            exp: exp.timestamp(),
+            iat: now.as_second(),
+            exp: exp.as_second(),
         }
     }
 }

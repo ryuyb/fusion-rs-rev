@@ -191,15 +191,11 @@ impl From<ScheduledJob> for JobResponse {
             timeout_seconds: job.timeout_seconds,
             payload: job.payload,
             description: job.description,
-            last_run_at: job
-                .last_run_at
-                .map(|dt| dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()),
+            last_run_at: job.last_run_at.to_jiff().map(|dt| dt.to_string()),
             last_run_status: job.last_run_status,
-            next_run_at: job
-                .next_run_at
-                .map(|dt| dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()),
-            created_at: job.created_at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
-            updated_at: job.updated_at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
+            next_run_at: job.next_run_at.to_jiff().map(|dt| dt.to_string()),
+            created_at: job.created_at.to_jiff().to_string(),
+            updated_at: job.updated_at.to_jiff().to_string(),
             created_by: job.created_by,
         }
     }
@@ -229,10 +225,8 @@ impl From<JobExecution> for JobExecutionResponse {
             job_id: exec.job_id,
             job_name: exec.job_name,
             execution_id: exec.execution_id.to_string(),
-            started_at: exec.started_at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
-            completed_at: exec
-                .completed_at
-                .map(|dt| dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()),
+            started_at: exec.started_at.to_jiff().to_string(),
+            completed_at: exec.completed_at.to_jiff().map(|dt| dt.to_string()),
             duration_ms: exec.duration_ms,
             status: exec.status,
             retry_attempt: exec.retry_attempt,
@@ -297,9 +291,9 @@ mod tests {
 
     #[test]
     fn test_job_response_from_scheduled_job() {
-        use chrono::DateTime;
+        use jiff_diesel::{DateTime, NullableDateTime};
 
-        let dt = DateTime::from_timestamp(0, 0).unwrap().naive_utc();
+        let dt = DateTime::from(jiff::civil::DateTime::constant(1970, 1, 1, 0, 0, 0, 0));
         let job = ScheduledJob {
             id: 1,
             job_name: "test".to_string(),
@@ -314,9 +308,9 @@ mod tests {
             timeout_seconds: 300,
             payload: None,
             description: None,
-            last_run_at: None,
+            last_run_at: NullableDateTime::from(None),
             last_run_status: None,
-            next_run_at: None,
+            next_run_at: NullableDateTime::from(None),
             created_at: dt,
             updated_at: dt,
             created_by: None,

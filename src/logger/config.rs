@@ -398,21 +398,16 @@ impl TimeUnit {
     /// Get the actual duration from a given timestamp, accounting for calendar variations
     ///
     /// This is more accurate for Monthly rotation as it considers actual month lengths.
-    pub fn duration_from(&self, from: chrono::DateTime<chrono::Utc>) -> chrono::Duration {
-        use chrono::{Duration, Months};
+    pub fn duration_from(&self, _from: jiff::Timestamp) -> jiff::SignedDuration {
+        use jiff::SignedDuration;
 
         match self {
-            TimeUnit::Hourly => Duration::hours(1),
-            TimeUnit::Daily => Duration::days(1),
-            TimeUnit::Weekly => Duration::weeks(1),
+            TimeUnit::Hourly => SignedDuration::from_hours(1),
+            TimeUnit::Daily => SignedDuration::from_hours(24),
+            TimeUnit::Weekly => SignedDuration::from_hours(24 * 7),
             TimeUnit::Monthly => {
-                // Calculate actual duration to next month
-                if let Some(next_month) = from.checked_add_months(Months::new(1)) {
-                    next_month.signed_duration_since(from)
-                } else {
-                    // Fallback to 30 days if overflow
-                    Duration::days(30)
-                }
+                // Approximate 30 days for monthly rotation
+                SignedDuration::from_hours(24 * 30)
             }
         }
     }

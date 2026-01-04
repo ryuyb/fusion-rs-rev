@@ -9,7 +9,7 @@ tokio = { version = "1.0", features = ["full"] }
 tokio-cron-scheduler = "0.15"
 tokio-util = { version = "0.7" }
 tower-http = { version = "0.6", features = ["cors", "compression-full"] }
-diesel = { version = "2.3", features = ["postgres", "chrono", "serde_json", "numeric", "uuid"] }
+diesel = { version = "2.3", features = ["postgres", "serde_json", "numeric", "uuid"] }
 # Static linking for PostgreSQL and OpenSSL
 pq-sys = { version = "0.7", features = ["bundled"] }
 openssl-sys = { version = "0.9", features = ["vendored"] }
@@ -36,7 +36,8 @@ tracing-subscriber = { version = "0.3", features = ["fmt", "json", "env-filter"]
 anyhow = "1.0"
 
 # Time and serialization
-chrono = { version = "0.4", default-features = false, features = ["serde"] }
+jiff = { version = "0.2", features = ["serde"] }
+jiff-diesel = { version = "0.1", features = ["postgres"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 regex = { version = "1.0", default-features = false, features = ["std", "perf", "unicode-perl"] }

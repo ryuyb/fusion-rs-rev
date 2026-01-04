@@ -1,10 +1,10 @@
-use chrono::NaiveDateTime;
 use diesel::prelude::*;
-use serde::{Deserialize, Serialize};
+use jiff_diesel::DateTime;
+use serde::Deserialize;
 
 /// User model for reading from database
 /// Derives Queryable for SELECT operations and Selectable for type-safe column selection
-#[derive(Debug, Queryable, Selectable, Serialize, Clone)]
+#[derive(Debug, Queryable, Selectable, Clone)]
 #[diesel(table_name = crate::schema::users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct User {
@@ -12,8 +12,8 @@ pub struct User {
     pub username: String,
     pub email: String,
     pub password: String,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
+    pub created_at: DateTime,
+    pub updated_at: DateTime,
 }
 
 /// NewUser model for inserting new records

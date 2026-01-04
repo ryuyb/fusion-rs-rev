@@ -2,7 +2,7 @@
 
 use crate::logger::compression::CompressionHandler;
 use crate::logger::config::{RotationConfig, RotationStrategy, TimeUnit};
-use chrono::{DateTime, Local, Utc};
+use jiff::{Timestamp, Zoned};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 pub struct RotationManager {
     config: RotationConfig,
     compression_handler: CompressionHandler,
-    last_rotation_time: DateTime<Utc>,
+    last_rotation_time: Timestamp,
 }
 
 impl RotationManager {
@@ -20,7 +20,7 @@ impl RotationManager {
         Self {
             config,
             compression_handler,
-            last_rotation_time: Utc::now(),
+            last_rotation_time: Timestamp::now(),
         }
     }
 
@@ -39,9 +39,9 @@ impl RotationManager {
 
     /// Check if time-based rotation should occur
     fn check_time_rotation(&self, time_unit: &TimeUnit) -> bool {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let duration = time_unit.duration_from(self.last_rotation_time);
-        now.signed_duration_since(self.last_rotation_time) >= duration
+        now.duration_since(self.last_rotation_time) >= duration
     }
 
     /// Perform file rotation
@@ -60,7 +60,7 @@ impl RotationManager {
         }
 
         // Update rotation time
-        self.last_rotation_time = Utc::now();
+        self.last_rotation_time = Timestamp::now();
 
         // Cleanup old files
         self.cleanup_old_files(current_path)?;
@@ -70,7 +70,7 @@ impl RotationManager {
 
     /// Generate a path for the rotated file with timestamp
     fn generate_rotated_path(&self, base_path: &Path) -> PathBuf {
-        let timestamp = Local::now().format("%Y%m%d_%H%M%S");
+        let timestamp = Zoned::now().strftime("%Y%m%d_%H%M%S");
         let stem = base_path.file_stem().unwrap_or_default().to_string_lossy();
         let ext = base_path.extension().unwrap_or_default().to_string_lossy();
 

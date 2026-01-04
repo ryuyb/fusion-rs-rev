@@ -1,6 +1,5 @@
-use chrono::NaiveDateTime;
 use diesel::prelude::*;
-use serde::Serialize;
+use jiff_diesel::{DateTime, NullableDateTime};
 use serde_json::Value as JsonValue;
 
 use crate::jobs::types::JobStatus;
@@ -10,7 +9,7 @@ use crate::schema::{job_executions, scheduled_jobs};
 // ScheduledJob Models
 // ============================================================================
 
-#[derive(Debug, Clone, Queryable, Selectable, Serialize)]
+#[derive(Debug, Clone, Queryable, Selectable)]
 #[diesel(table_name = scheduled_jobs)]
 pub struct ScheduledJob {
     pub id: i32,
@@ -26,11 +25,11 @@ pub struct ScheduledJob {
     pub timeout_seconds: i32,
     pub payload: Option<JsonValue>,
     pub description: Option<String>,
-    pub last_run_at: Option<NaiveDateTime>,
+    pub last_run_at: NullableDateTime,
     pub last_run_status: Option<JobStatus>,
-    pub next_run_at: Option<NaiveDateTime>,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
+    pub next_run_at: NullableDateTime,
+    pub created_at: DateTime,
+    pub updated_at: DateTime,
     pub created_by: Option<String>,
 }
 
@@ -71,15 +70,15 @@ pub struct UpdateScheduledJob {
 // JobExecution Models
 // ============================================================================
 
-#[derive(Debug, Clone, Queryable, Selectable, Serialize)]
+#[derive(Debug, Clone, Queryable, Selectable)]
 #[diesel(table_name = job_executions)]
 pub struct JobExecution {
     pub id: i64,
     pub job_id: i32,
     pub job_name: String,
     pub execution_id: uuid::Uuid,
-    pub started_at: NaiveDateTime,
-    pub completed_at: Option<NaiveDateTime>,
+    pub started_at: DateTime,
+    pub completed_at: NullableDateTime,
     pub duration_ms: Option<i64>,
     pub status: JobStatus,
     pub retry_attempt: i32,

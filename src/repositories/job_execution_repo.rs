@@ -1,6 +1,6 @@
-use chrono::{Duration, Utc};
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
+use jiff_diesel::DateTime;
 use serde_json::Value as JsonValue;
 
 use crate::db::AsyncDbPool;
@@ -99,7 +99,9 @@ impl JobExecutionRepository {
                 source: anyhow::Error::from(e),
             })?;
 
-        let cutoff = Utc::now().naive_utc() - Duration::days(retention_days);
+        let cutoff_ts =
+            jiff::Timestamp::now() - jiff::SignedDuration::from_hours(retention_days * 24);
+        let cutoff = DateTime::from(cutoff_ts.to_zoned(jiff::tz::TimeZone::UTC).datetime());
 
         diesel::delete(
             job_executions::table.filter(

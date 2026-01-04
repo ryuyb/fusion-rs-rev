@@ -105,14 +105,8 @@ impl From<NotificationChannel> for ChannelResponse {
             config: channel.config,
             enabled: channel.enabled,
             priority: channel.priority,
-            created_at: channel
-                .created_at
-                .format("%Y-%m-%dT%H:%M:%S%.3fZ")
-                .to_string(),
-            updated_at: channel
-                .updated_at
-                .format("%Y-%m-%dT%H:%M:%S%.3fZ")
-                .to_string(),
+            created_at: channel.created_at.to_jiff().to_string(),
+            updated_at: channel.updated_at.to_jiff().to_string(),
         }
     }
 }
@@ -178,7 +172,7 @@ impl From<NotificationLog> for LogResponse {
             status: log.status,
             error_message: log.error_message,
             retry_count: log.retry_count,
-            sent_at: log.sent_at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
+            sent_at: log.sent_at.to_jiff().to_string(),
         }
     }
 }
