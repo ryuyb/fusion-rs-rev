@@ -1,3 +1,4 @@
+mod abogus;
 mod client;
 mod sign;
 mod types;
