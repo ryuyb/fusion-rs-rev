@@ -5,12 +5,14 @@ use std::fmt;
 #[serde(rename_all = "lowercase")]
 pub enum LivePlatform {
     Bilibili,
+    Douyin,
 }
 
 impl fmt::Display for LivePlatform {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             LivePlatform::Bilibili => write!(f, "bilibili"),
+            LivePlatform::Douyin => write!(f, "douyin"),
         }
     }
 }

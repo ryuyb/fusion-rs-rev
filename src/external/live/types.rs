@@ -8,6 +8,7 @@ pub enum LiveStatus {
 #[derive(Debug, Clone)]
 pub struct RoomInfo {
     pub room_id: String,
+    pub uid: String,
     pub title: String,
     pub live_status: LiveStatus,
     pub online: u64,
