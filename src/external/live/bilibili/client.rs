@@ -1,13 +1,16 @@
-use super::types::{BiliAnchorData, BiliResponse, BiliRoomData};
+use super::types::{BiliAnchorData, BiliResponse, BiliRoomData, BiliRoomStatusMap};
 use crate::error::AppError;
 use crate::external::client::HTTP_CLIENT;
 use crate::external::live::platform::LivePlatform;
 use crate::external::live::provider::LivePlatformProvider;
-use crate::external::live::types::{AnchorInfo, LiveStatus, RoomInfo};
+use crate::external::live::types::{AnchorInfo, LiveStatus, RoomInfo, RoomStatusInfo};
 use async_trait::async_trait;
+use serde_json::json;
+use std::collections::HashMap;
 
 const ROOM_INFO_API: &str = "https://api.live.bilibili.com/room/v1/Room/get_info";
 const ANCHOR_INFO_API: &str = "https://api.live.bilibili.com/live_user/v1/Master/info";
+const BATCH_STATUS_API: &str = "https://api.live.bilibili.com/room/v1/Room/get_status_info_by_uids";
 
 pub struct BilibiliLive;
 
@@ -21,6 +24,14 @@ impl BilibiliLive {
             platform: "bilibili".into(),
             message: message.into(),
             source,
+        }
+    }
+
+    fn parse_live_status(status: u8) -> LiveStatus {
+        match status {
+            1 => LiveStatus::Live,
+            2 => LiveStatus::Replay,
+            _ => LiveStatus::Offline,
         }
     }
 }
@@ -75,11 +86,7 @@ impl LivePlatformProvider for BilibiliLive {
         Ok(RoomInfo {
             room_id: d.room_id.to_string(),
             title: d.title,
-            live_status: match d.live_status {
-                1 => LiveStatus::Live,
-                2 => LiveStatus::Replay,
-                _ => LiveStatus::Offline,
-            },
+            live_status: Self::parse_live_status(d.live_status),
             online: d.online,
             cover_url: Some(d.user_cover),
             area_name: Some(d.area_name),
@@ -129,6 +136,70 @@ impl LivePlatformProvider for BilibiliLive {
             follower_count: Some(d.follower_num),
             room_id: Some(d.room_id.to_string()),
         })
+    }
+
+    async fn get_rooms_status_by_uids(
+        &self,
+        uids: &[&str],
+    ) -> crate::error::AppResult<HashMap<String, RoomStatusInfo>> {
+        let uid_nums: Vec<u64> = uids.iter().filter_map(|s| s.parse().ok()).collect();
+
+        let resp = HTTP_CLIENT
+            .post(BATCH_STATUS_API)
+            .json(&json!({ "uids": uid_nums }))
+            .send()
+            .await
+            .map_err(|e: reqwest::Error| {
+                Self::make_error(
+                    format!("get_rooms_status_by_uids request failed: {}", e),
+                    Some(e.into()),
+                )
+            })?
+            .error_for_status()
+            .map_err(|e: reqwest::Error| {
+                Self::make_error(
+                    format!("get_rooms_status_by_uids HTTP error: {}", e),
+                    Some(e.into()),
+                )
+            })?;
+
+        let data: BiliResponse<BiliRoomStatusMap> =
+            resp.json().await.map_err(|e: reqwest::Error| {
+                Self::make_error(
+                    format!("get_rooms_status_by_uids invalid JSON: {}", e),
+                    Some(e.into()),
+                )
+            })?;
+
+        if data.code != 0 {
+            return Err(Self::make_error(
+                format!("get_rooms_status_by_uids API error code: {}", data.code),
+                None,
+            ));
+        }
+
+        let result = data
+            .data
+            .into_iter()
+            .map(|(uid, d)| {
+                (
+                    uid,
+                    RoomStatusInfo {
+                        uid: d.uid.to_string(),
+                        room_id: d.room_id.to_string(),
+                        title: d.title,
+                        live_status: Self::parse_live_status(d.live_status),
+                        online: d.online,
+                        uname: d.uname,
+                        face: Some(d.face),
+                        cover_url: Some(d.cover_from_user),
+                        area_name: Some(d.area_v2_name),
+                    },
+                )
+            })
+            .collect();
+
+        Ok(result)
     }
 }
 
@@ -201,5 +272,17 @@ mod tests {
         let anchor = result.unwrap();
         assert_eq!(anchor.uid, "9617619");
         assert!(!anchor.name.is_empty());
+    }
+
+    #[tokio::test]
+    #[ignore = "requires network access"]
+    async fn test_get_rooms_status_by_uids_real_api() {
+        let client = BilibiliLive::new();
+        let result = client
+            .get_rooms_status_by_uids(&["50329118", "9617619"])
+            .await;
+        assert!(result.is_ok());
+        let map = result.unwrap();
+        assert!(!map.is_empty());
     }
 }

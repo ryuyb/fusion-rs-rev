@@ -23,3 +23,16 @@ pub struct AnchorInfo {
     pub follower_count: Option<u64>,
     pub room_id: Option<String>,
 }
+
+#[derive(Debug, Clone)]
+pub struct RoomStatusInfo {
+    pub uid: String,
+    pub room_id: String,
+    pub title: String,
+    pub live_status: LiveStatus,
+    pub online: u64,
+    pub uname: String,
+    pub face: Option<String>,
+    pub cover_url: Option<String>,
+    pub area_name: Option<String>,
+}

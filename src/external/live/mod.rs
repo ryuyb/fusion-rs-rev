@@ -6,7 +6,7 @@ mod types;
 pub use bilibili::BilibiliLive;
 pub use platform::LivePlatform;
 pub use provider::LivePlatformProvider;
-pub use types::{AnchorInfo, LiveStatus, RoomInfo};
+pub use types::{AnchorInfo, LiveStatus, RoomInfo, RoomStatusInfo};
 
 use std::sync::LazyLock;
 
