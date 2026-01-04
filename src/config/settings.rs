@@ -21,7 +21,7 @@ fn default_app_name() -> String {
 }
 
 fn default_app_version() -> String {
-    "0.1.0".to_string()
+    crate::pkg_version().to_string()
 }
 
 fn default_host() -> String {
@@ -824,7 +824,7 @@ mod tests {
     fn test_application_config_defaults() {
         let config = ApplicationConfig::default();
         assert_eq!(config.name, "fusion-rs");
-        assert_eq!(config.version, "0.1.0");
+        assert_eq!(config.version, crate::pkg_version());
     }
 
     #[test]

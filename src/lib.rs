@@ -2,6 +2,9 @@
 //!
 //! Core library modules for the Fusion-RS web application.
 
+use shadow_rs::shadow;
+shadow!(build);
+
 pub mod api;
 pub mod cli;
 pub mod config;
@@ -19,3 +22,11 @@ pub mod state;
 pub mod utils;
 
 pub use state::AppState;
+
+pub fn pkg_version() -> &'static str {
+    build::PKG_VERSION
+}
+
+pub fn clap_long_version() -> &'static str {
+    build::CLAP_LONG_VERSION
+}

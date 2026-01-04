@@ -6,10 +6,6 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
-// Include shadow-rs generated build information
-use shadow_rs::shadow;
-shadow!(build);
-
 /// A Rust web application with database integration
 #[derive(Parser, Debug)]
 #[command(name = "fusion-rs")]
@@ -46,7 +42,7 @@ EXAMPLES:
 
 For more information about configuration options, see the documentation.
 ")]
-#[command(version = build::CLAP_LONG_VERSION)]
+#[command(version = crate::clap_long_version())]
 pub struct Cli {
     /// Subcommand to execute
     #[command(subcommand)]
