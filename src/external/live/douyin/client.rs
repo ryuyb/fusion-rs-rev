@@ -1,7 +1,7 @@
 use super::abogus::ABogus;
 use super::sign::get_ac_signature;
 use super::types::{DouyinEnterRoomResp, DouyinUserProfileResp};
-use crate::error::AppError;
+use crate::error::{AppError, AppResult};
 use crate::external::client::HTTP_CLIENT;
 use crate::external::live::platform::LivePlatform;
 use crate::external::live::provider::LivePlatformProvider;
@@ -49,7 +49,7 @@ impl DouyinLive {
         }
     }
 
-    pub async fn resolve_short_url(&self, short_url: &str) -> crate::error::AppResult<String> {
+    pub async fn resolve_short_url(&self, short_url: &str) -> AppResult<String> {
         if let Some(caps) = LIVE_URL_REGEX.captures(short_url) {
             return Ok(caps[1].to_string());
         }
@@ -99,7 +99,7 @@ impl DouyinLive {
             })
     }
 
-    async fn parse_user(&self, url: &str) -> crate::error::AppResult<String> {
+    async fn parse_user(&self, url: &str) -> AppResult<String> {
         let nonce = Self::generate_nonce();
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -143,7 +143,7 @@ impl DouyinLive {
             .collect()
     }
 
-    async fn get_cookie() -> crate::error::AppResult<String> {
+    async fn get_cookie() -> AppResult<String> {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -206,7 +206,7 @@ impl LivePlatformProvider for DouyinLive {
         LivePlatform::Douyin
     }
 
-    async fn get_room_info(&self, room_id: &str) -> crate::error::AppResult<RoomInfo> {
+    async fn get_room_info(&self, room_id: &str) -> AppResult<RoomInfo> {
         let cookies = Self::get_cookie().await?;
         let ua = USER_AGENT_POOL.get(Browser::Chrome, Platform::Windows);
 
@@ -303,7 +303,7 @@ impl LivePlatformProvider for DouyinLive {
         })
     }
 
-    async fn get_anchor_info(&self, uid: &str) -> crate::error::AppResult<AnchorInfo> {
+    async fn get_anchor_info(&self, uid: &str) -> AppResult<AnchorInfo> {
         let cookies = Self::get_cookie().await?;
         let ua = USER_AGENT_POOL.get(Browser::Chrome, Platform::Windows);
 
@@ -385,7 +385,7 @@ impl LivePlatformProvider for DouyinLive {
     async fn get_rooms_status_by_uids(
         &self,
         uids: &[&str],
-    ) -> crate::error::AppResult<HashMap<String, RoomStatusInfo>> {
+    ) -> AppResult<HashMap<String, RoomStatusInfo>> {
         let mut result = HashMap::new();
 
         for chunk in uids.chunks(3) {

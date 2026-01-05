@@ -1,5 +1,5 @@
 use super::types::{BiliAnchorData, BiliResponse, BiliRoomData, BiliRoomStatusMap};
-use crate::error::AppError;
+use crate::error::{AppError, AppResult};
 use crate::external::client::HTTP_CLIENT;
 use crate::external::live::platform::LivePlatform;
 use crate::external::live::provider::LivePlatformProvider;
@@ -48,7 +48,7 @@ impl LivePlatformProvider for BilibiliLive {
         LivePlatform::Bilibili
     }
 
-    async fn get_room_info(&self, room_id: &str) -> crate::error::AppResult<RoomInfo> {
+    async fn get_room_info(&self, room_id: &str) -> AppResult<RoomInfo> {
         let url = format!("{}?room_id={}", ROOM_INFO_API, room_id);
         let resp = HTTP_CLIENT
             .get(&url)
@@ -94,7 +94,7 @@ impl LivePlatformProvider for BilibiliLive {
         })
     }
 
-    async fn get_anchor_info(&self, uid: &str) -> crate::error::AppResult<AnchorInfo> {
+    async fn get_anchor_info(&self, uid: &str) -> AppResult<AnchorInfo> {
         let url = format!("{}?uid={}", ANCHOR_INFO_API, uid);
         let resp = HTTP_CLIENT
             .get(&url)
@@ -142,7 +142,7 @@ impl LivePlatformProvider for BilibiliLive {
     async fn get_rooms_status_by_uids(
         &self,
         uids: &[&str],
-    ) -> crate::error::AppResult<HashMap<String, RoomStatusInfo>> {
+    ) -> AppResult<HashMap<String, RoomStatusInfo>> {
         let uid_nums: Vec<u64> = uids.iter().filter_map(|s| s.parse().ok()).collect();
 
         let resp = HTTP_CLIENT
