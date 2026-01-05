@@ -3,6 +3,7 @@
 //! This module handles server initialization, startup, and graceful shutdown.
 
 use crate::api::routes::create_router;
+use crate::cache::{CacheManager, init_cache};
 use crate::config::{Environment, settings::Settings};
 use crate::db::establish_async_connection_pool;
 use crate::state::AppState;
@@ -76,6 +77,26 @@ impl Server {
         }
     }
 
+    /// Initialize cache manager if enabled
+    async fn initialize_cache(&self) -> anyhow::Result<Option<CacheManager>> {
+        if self.settings.cache.enabled {
+            tracing::info!(
+                backend = ?self.settings.cache.backend,
+                "Initializing cache manager"
+            );
+
+            let cache = init_cache(self.settings.cache.clone(), "app").await?;
+            tracing::info!(
+                "Cache manager initialized: {backend:?}",
+                backend = self.settings.cache.backend
+            );
+            Ok(Some(cache.clone()))
+        } else {
+            tracing::info!("Cache disabled");
+            Ok(None)
+        }
+    }
+
     /// Bind TCP listener to configured address
     async fn bind_listener(&self) -> anyhow::Result<TcpListener> {
         let address = self.settings.server.address();
@@ -105,9 +126,10 @@ impl Server {
     /// 2. Validates configuration
     /// 3. Initializes database connection pool
     /// 4. Initializes job scheduler (if enabled)
-    /// 5. Creates application state
-    /// 6. Binds to configured address
-    /// 7. Starts the HTTP server with graceful shutdown
+    /// 5. Initializes cache manager (if enabled)
+    /// 6. Creates application state
+    /// 7. Binds to configured address
+    /// 8. Starts the HTTP server with graceful shutdown
     ///
     /// # Returns
     /// Returns Ok(()) on successful shutdown, or error on startup failure
@@ -116,6 +138,7 @@ impl Server {
     /// - Configuration validation errors
     /// - Database connection pool initialization errors
     /// - Job scheduler initialization errors
+    /// - Cache manager initialization errors
     /// - Address binding errors
     /// - Server runtime errors
     pub async fn run(self) -> anyhow::Result<()> {
@@ -124,8 +147,9 @@ impl Server {
 
         let pool = self.initialize_database().await?;
         let scheduler = self.initialize_scheduler(pool.clone()).await?;
+        let cache = self.initialize_cache().await?;
 
-        let state = AppState::new(pool, self.settings.jwt.clone(), scheduler);
+        let state = AppState::new(pool, self.settings.jwt.clone(), scheduler, cache);
         tracing::info!("Application state created");
 
         let router = create_router(state.clone());

@@ -10,6 +10,7 @@ pub struct DouyinEnterRoomResp {
 pub struct DouyinEnterRoomData {
     pub data: Option<Vec<DouyinRoomDetail>>,
     pub room_status: Option<i32>,
+    pub user: Option<DouyinBaseInfo>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -19,7 +20,6 @@ pub struct DouyinRoomDetail {
     pub cover: Option<DouyinCover>,
     pub game_data: Option<DouyinGameData>,
     pub room_view_stats: Option<DouyinRoomViewStats>,
-    pub owner: Option<DouyinBaseInfo>,
 }
 
 #[derive(Debug, Deserialize)]

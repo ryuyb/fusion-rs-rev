@@ -126,3 +126,42 @@ retry_delay = 60
 retry_backoff_multiplier = 2.0
 # Execution history retention in days
 history_retention_days = 30
+
+# -----------------------------------------------------------------------------
+# Cache Configuration
+# -----------------------------------------------------------------------------
+# Caching system settings with multiple backend support.
+[cache]
+# Enable caching system
+enabled = false
+# Cache backend: memory, disk, redis
+backend = "memory"
+
+# Memory cache settings (in-process, fastest)
+[cache.memory]
+# Maximum number of entries in the cache
+max_size = 1000
+# Time-to-live in seconds
+ttl_seconds = 300
+
+# Disk cache settings (persistent, file-based)
+[cache.disk]
+# Directory to store cache files
+directory = "cache"
+# Time-to-live in seconds
+ttl_seconds = 300
+
+# Redis cache settings (distributed, network-based)
+[cache.redis]
+# Redis connection URL
+url = "redis://127.0.0.1:6379"
+# Time-to-live in seconds
+ttl_seconds = 300
+# Connection pool size
+pool_size = 4
+# Connection timeout in seconds
+connection_timeout = 5
+# Key prefix for all cache entries
+key_prefix = "fusion"
+# Enable TLS for Redis connection
+tls_enabled = false

@@ -4,10 +4,12 @@
 //! repositories and handlers.
 
 mod job_service;
+mod live_service;
 pub mod notifications;
 mod user_service;
 
 pub use job_service::JobService;
+pub use live_service::LiveService;
 pub use notifications::NotificationService;
 pub use user_service::UserService;
 
@@ -22,6 +24,7 @@ pub struct Services {
     pub users: UserService,
     pub notifications: NotificationService,
     pub jobs: JobService,
+    pub live: LiveService,
 }
 
 impl Services {
@@ -34,6 +37,7 @@ impl Services {
                 repos.notification_logs,
             ),
             jobs: JobService::new(repos.jobs, repos.executions),
+            live: LiveService::new(),
         }
     }
 }

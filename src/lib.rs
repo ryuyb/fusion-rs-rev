@@ -6,6 +6,8 @@ use shadow_rs::shadow;
 shadow!(build);
 
 pub mod api;
+#[macro_use]
+pub mod cache;
 pub mod cli;
 pub mod config;
 pub mod db;

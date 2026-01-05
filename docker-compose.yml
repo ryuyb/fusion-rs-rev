@@ -1,5 +1,25 @@
 services:
   # -----------------------------------------------------------------------------
+  # Redis Cache Service
+  # -----------------------------------------------------------------------------
+  redis:
+    image: redis:8
+    container_name: fusion-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+#    ports:
+#      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fusion-network
+
+  # -----------------------------------------------------------------------------
   # PostgreSQL Database Service
   # -----------------------------------------------------------------------------
   postgres:
@@ -64,4 +84,6 @@ networks:
 
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
     driver: local

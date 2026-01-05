@@ -64,3 +64,11 @@ compress = false
 [jobs]
 enabled = true
 history_retention_days = 7
+
+# -----------------------------------------------------------------------------
+# Cache Configuration
+# -----------------------------------------------------------------------------
+# Caching system settings with multiple backend support.
+[cache]
+enabled = false
+backend = "memory"

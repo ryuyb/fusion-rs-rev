@@ -1,6 +1,7 @@
 use super::abogus::ABogus;
 use super::sign::get_ac_signature;
 use super::types::{DouyinEnterRoomResp, DouyinUserProfileResp};
+use crate::cache::app_cached;
 use crate::error::{AppError, AppResult};
 use crate::external::client::HTTP_CLIENT;
 use crate::external::live::platform::LivePlatform;
@@ -49,6 +50,7 @@ impl DouyinLive {
         }
     }
 
+    #[app_cached(name = "douyin_short_url", ttl = 86400, key = short_url)]
     pub async fn resolve_short_url(&self, short_url: &str) -> AppResult<String> {
         if let Some(caps) = LIVE_URL_REGEX.captures(short_url) {
             return Ok(caps[1].to_string());
@@ -99,6 +101,7 @@ impl DouyinLive {
             })
     }
 
+    #[app_cached(name = "douyin_parse_user", ttl = 86400, key = url)]
     async fn parse_user(&self, url: &str) -> AppResult<String> {
         let nonce = Self::generate_nonce();
         let timestamp = SystemTime::now()
@@ -270,10 +273,10 @@ impl LivePlatformProvider for DouyinLive {
                 .as_ref()
                 .and_then(|r| r.id_str.clone())
                 .unwrap_or_else(|| room_id.to_string()),
-            uid: room
+            uid: room_data
+                .user
                 .as_ref()
-                .and_then(|r| r.owner.as_ref())
-                .and_then(|o| o.id_str.clone())
+                .and_then(|r| r.id_str.clone())
                 .unwrap_or_default(),
             title: room
                 .as_ref()
