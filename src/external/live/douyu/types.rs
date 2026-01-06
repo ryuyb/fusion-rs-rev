@@ -51,8 +51,9 @@ pub struct DouyuAvatar {
 impl DouyuAvatar {
     pub fn get_best(&self) -> Option<String> {
         self.big
-            .clone()
-            .or_else(|| self.middle.clone())
-            .or_else(|| self.small.clone())
+            .as_ref()
+            .or(self.middle.as_ref())
+            .or(self.small.as_ref())
+            .cloned()
     }
 }
