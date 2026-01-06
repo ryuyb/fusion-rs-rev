@@ -1,10 +1,10 @@
 //! Memory cache implementation with per-entry TTL support.
 
 use std::collections::HashMap;
-use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
+use tokio::sync::Mutex;
 
 use crate::cache::{AppCache, CacheError};
 use crate::config::settings::MemoryCacheConfig;
@@ -39,10 +39,7 @@ impl MemoryCache {
 #[async_trait]
 impl AppCache for MemoryCache {
     async fn get(&self, key: &str) -> Result<Option<Vec<u8>>, CacheError> {
-        let mut store = self
-            .store
-            .lock()
-            .map_err(|e| CacheError::Operation(e.to_string()))?;
+        let mut store = self.store.lock().await;
 
         if let Some(entry) = store.get(key) {
             if entry.expires_at.is_none_or(|exp| exp > Instant::now()) {
@@ -59,10 +56,7 @@ impl AppCache for MemoryCache {
         value: Vec<u8>,
         ttl_seconds: Option<u64>,
     ) -> Result<(), CacheError> {
-        let mut store = self
-            .store
-            .lock()
-            .map_err(|e| CacheError::Operation(e.to_string()))?;
+        let mut store = self.store.lock().await;
 
         // Evict expired entries if at capacity
         if store.len() >= self.max_size {
@@ -79,19 +73,13 @@ impl AppCache for MemoryCache {
     }
 
     async fn remove(&self, key: &str) -> Result<(), CacheError> {
-        let mut store = self
-            .store
-            .lock()
-            .map_err(|e| CacheError::Operation(e.to_string()))?;
+        let mut store = self.store.lock().await;
         store.remove(key);
         Ok(())
     }
 
     async fn clear(&self) -> Result<(), CacheError> {
-        let mut store = self
-            .store
-            .lock()
-            .map_err(|e| CacheError::Operation(e.to_string()))?;
+        let mut store = self.store.lock().await;
         store.clear();
         Ok(())
     }

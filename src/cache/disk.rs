@@ -1,12 +1,12 @@
 //! Disk cache implementation with per-entry TTL support.
 
-use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
 use cached::IOCached;
 use cached::stores::DiskCache as CachedDiskCache;
 use serde::{Deserialize, Serialize};
+use tokio::sync::Mutex;
 
 use crate::cache::{AppCache, CacheError};
 use crate::config::settings::DiskCacheConfig;
@@ -56,10 +56,7 @@ impl DiskCache {
 impl AppCache for DiskCache {
     async fn get(&self, key: &str) -> Result<Option<Vec<u8>>, CacheError> {
         let key_string = key.to_string();
-        let store = self
-            .store
-            .lock()
-            .map_err(|e| CacheError::Operation(e.to_string()))?;
+        let store = self.store.lock().await;
 
         let bytes = store
             .cache_get(&key_string)
@@ -83,10 +80,7 @@ impl AppCache for DiskCache {
         value: Vec<u8>,
         ttl_seconds: Option<u64>,
     ) -> Result<(), CacheError> {
-        let store = self
-            .store
-            .lock()
-            .map_err(|e| CacheError::Operation(e.to_string()))?;
+        let store = self.store.lock().await;
 
         let ttl = ttl_seconds.unwrap_or(self.default_ttl);
         let expires_at = SystemTime::now()
@@ -111,10 +105,7 @@ impl AppCache for DiskCache {
 
     async fn remove(&self, key: &str) -> Result<(), CacheError> {
         let key_string = key.to_string();
-        let store = self
-            .store
-            .lock()
-            .map_err(|e| CacheError::Operation(e.to_string()))?;
+        let store = self.store.lock().await;
         store
             .cache_remove(&key_string)
             .map_err(|e| CacheError::Operation(e.to_string()))?;
