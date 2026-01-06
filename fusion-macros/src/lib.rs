@@ -133,10 +133,13 @@ pub fn app_cached(args: TokenStream, input: TokenStream) -> TokenStream {
             let cache_key = #cache_key_expr;
 
             if let Some(cache) = crate::cache::get_cache() {
-                if let Ok(Some(bytes)) = cache.get(&cache_key).await {
-                    if let Ok(value) = serde_json::from_slice(&bytes) {
-                        return Ok(value);
-                    }
+                match cache.get(&cache_key).await {
+                    Ok(Some(bytes)) => match serde_json::from_slice(&bytes) {
+                        Ok(value) => return Ok(value),
+                        Err(e) => tracing::warn!(key = %cache_key, error = %e, "cache deserialization failed"),
+                    },
+                    Err(e) => tracing::warn!(key = %cache_key, error = %e, "cache get failed"),
+                    _ => {}
                 }
             }
 
@@ -144,8 +147,13 @@ pub fn app_cached(args: TokenStream, input: TokenStream) -> TokenStream {
 
             if let Ok(ref value) = result {
                 if let Some(cache) = crate::cache::get_cache() {
-                    if let Ok(bytes) = serde_json::to_vec(value) {
-                        let _ = cache.set(&cache_key, bytes, #ttl_expr).await;
+                    match serde_json::to_vec(value) {
+                        Ok(bytes) => {
+                            if let Err(e) = cache.set(&cache_key, bytes, #ttl_expr).await {
+                                tracing::warn!(key = %cache_key, error = %e, "cache set failed");
+                            }
+                        }
+                        Err(e) => tracing::warn!(key = %cache_key, error = %e, "cache serialization failed"),
                     }
                 }
             }
