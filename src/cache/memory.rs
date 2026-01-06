@@ -79,3 +79,61 @@ impl AppCache for MemoryCache {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_config() -> MemoryCacheConfig {
+        MemoryCacheConfig {
+            max_size: 2,
+            ttl_seconds: 3600,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_set() {
+        let cache = MemoryCache::new(&test_config());
+        cache.set("key", b"value".to_vec(), None).await.unwrap();
+        assert_eq!(cache.get("key").await.unwrap(), Some(b"value".to_vec()));
+    }
+
+    #[tokio::test]
+    async fn test_remove() {
+        let cache = MemoryCache::new(&test_config());
+        cache.set("key", b"value".to_vec(), None).await.unwrap();
+        cache.remove("key").await.unwrap();
+        assert_eq!(cache.get("key").await.unwrap(), None);
+    }
+
+    #[tokio::test]
+    async fn test_clear() {
+        let cache = MemoryCache::new(&test_config());
+        cache.set("k1", b"v1".to_vec(), None).await.unwrap();
+        cache.set("k2", b"v2".to_vec(), None).await.unwrap();
+        cache.clear().await.unwrap();
+        assert_eq!(cache.get("k1").await.unwrap(), None);
+        assert_eq!(cache.get("k2").await.unwrap(), None);
+    }
+
+    #[tokio::test]
+    async fn test_ttl_expiration() {
+        let cache = MemoryCache::new(&test_config());
+        cache.set("key", b"value".to_vec(), Some(1)).await.unwrap();
+        assert_eq!(cache.get("key").await.unwrap(), Some(b"value".to_vec()));
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        assert_eq!(cache.get("key").await.unwrap(), None);
+    }
+
+    #[tokio::test]
+    async fn test_max_size_eviction() {
+        let cache = MemoryCache::new(&test_config());
+        cache.set("k1", b"v1".to_vec(), Some(1)).await.unwrap();
+        cache.set("k2", b"v2".to_vec(), None).await.unwrap();
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        cache.set("k3", b"v3".to_vec(), None).await.unwrap();
+        assert_eq!(cache.get("k1").await.unwrap(), None);
+        assert_eq!(cache.get("k2").await.unwrap(), Some(b"v2".to_vec()));
+        assert_eq!(cache.get("k3").await.unwrap(), Some(b"v3".to_vec()));
+    }
+}

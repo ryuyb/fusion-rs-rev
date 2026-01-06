@@ -117,3 +117,41 @@ impl AppCache for DiskCache {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    fn test_config() -> DiskCacheConfig {
+        let dir = tempdir().unwrap();
+        DiskCacheConfig {
+            directory: dir.path().to_str().unwrap().to_string(),
+            ttl_seconds: 3600,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_set() {
+        let cache = DiskCache::new(&test_config(), "test_get_set").unwrap();
+        cache.set("key", b"value".to_vec(), None).await.unwrap();
+        assert_eq!(cache.get("key").await.unwrap(), Some(b"value".to_vec()));
+    }
+
+    #[tokio::test]
+    async fn test_remove() {
+        let cache = DiskCache::new(&test_config(), "test_remove").unwrap();
+        cache.set("key", b"value".to_vec(), None).await.unwrap();
+        cache.remove("key").await.unwrap();
+        assert_eq!(cache.get("key").await.unwrap(), None);
+    }
+
+    #[tokio::test]
+    async fn test_ttl_expiration() {
+        let cache = DiskCache::new(&test_config(), "test_ttl").unwrap();
+        cache.set("key", b"value".to_vec(), Some(1)).await.unwrap();
+        assert_eq!(cache.get("key").await.unwrap(), Some(b"value".to_vec()));
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        assert_eq!(cache.get("key").await.unwrap(), None);
+    }
+}
