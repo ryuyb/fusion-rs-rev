@@ -48,7 +48,6 @@ use utoipa_swagger_ui::SwaggerUi;
 pub fn create_router(state: AppState) -> Router {
     // Public auth routes
     let public_auth_routes = OpenApiRouter::new().nest("/auth", handlers::auth::auth_routes());
-    let live_routes = OpenApiRouter::new().nest("/live", handlers::live::live_routes());
 
     // Protected routes (authentication required)
     let protected_routes = OpenApiRouter::new()
@@ -59,6 +58,7 @@ pub fn create_router(state: AppState) -> Router {
             handlers::notifications::notification_routes(),
         )
         .nest("/jobs", handlers::jobs::job_routes())
+        .nest("/live", handlers::live::live_routes())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             auth_middleware,
@@ -66,7 +66,6 @@ pub fn create_router(state: AppState) -> Router {
 
     let api_routes = OpenApiRouter::new()
         .merge(public_auth_routes)
-        .merge(live_routes)
         .merge(protected_routes);
 
     let (router, openapi) = OpenApiRouter::with_openapi(ApiDoc::openapi())
