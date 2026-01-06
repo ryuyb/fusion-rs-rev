@@ -1,0 +1,5 @@
+error: ttl must be an integer
+ --> tests/ui/fail_invalid_ttl_type.rs:3:35
+  |
+3 | #[app_cached(name = "test", ttl = "invalid")]
+  |                                   ^^^^^^^^^

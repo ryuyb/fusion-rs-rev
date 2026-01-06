@@ -1,0 +1,5 @@
+error: unknown attribute `unknown`, expected `name`, `ttl`, or `key`
+ --> tests/ui/fail_unknown_attribute.rs:3:29
+  |
+3 | #[app_cached(name = "test", unknown = "value")]
+  |                             ^^^^^^^

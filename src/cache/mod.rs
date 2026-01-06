@@ -56,8 +56,8 @@ mod noop;
 mod redis;
 mod traits;
 
+pub use ::macros::app_cached;
 pub use error::CacheError;
-pub use fusion_macros::app_cached;
 pub use manager::{CacheManager, get_cache, init_cache};
 pub use traits::AppCache;
 

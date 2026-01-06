@@ -1,0 +1,5 @@
+error: name must be a string literal
+ --> tests/ui/fail_invalid_name_type.rs:3:21
+  |
+3 | #[app_cached(name = 123)]
+  |                     ^^^
