@@ -9,6 +9,7 @@ pub enum LivePlatform {
     Bilibili,
     Douyin,
     Douyu,
+    Huya,
 }
 
 impl fmt::Display for LivePlatform {
@@ -17,6 +18,7 @@ impl fmt::Display for LivePlatform {
             LivePlatform::Bilibili => write!(f, "bilibili"),
             LivePlatform::Douyin => write!(f, "douyin"),
             LivePlatform::Douyu => write!(f, "douyu"),
+            LivePlatform::Huya => write!(f, "huya"),
         }
     }
 }
