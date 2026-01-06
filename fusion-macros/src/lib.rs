@@ -23,23 +23,45 @@ impl Parse for MacroArgs {
                     let lit: Lit = input.parse()?;
                     if let Lit::Str(s) = lit {
                         cache_name = Some(s.value());
+                    } else {
+                        return Err(syn::Error::new(lit.span(), "name must be a string literal"));
                     }
                 }
                 "ttl" => {
                     let lit: Lit = input.parse()?;
                     if let Lit::Int(i) = lit {
                         ttl = Some(i.base10_parse()?);
+                    } else {
+                        return Err(syn::Error::new(lit.span(), "ttl must be an integer"));
                     }
                 }
                 "key" => {
                     let expr: Expr = input.parse()?;
-                    if let Expr::Path(path) = expr {
+                    if let Expr::Path(ref path) = expr {
                         if let Some(ident) = path.path.get_ident() {
                             key_params.push(ident.to_string());
+                        } else {
+                            return Err(syn::Error::new_spanned(
+                                expr,
+                                "key must be a parameter name",
+                            ));
                         }
+                    } else {
+                        return Err(syn::Error::new_spanned(
+                            expr,
+                            "key must be a parameter name",
+                        ));
                     }
                 }
-                _ => {}
+                other => {
+                    return Err(syn::Error::new(
+                        ident.span(),
+                        format!(
+                            "unknown attribute `{}`, expected `name`, `ttl`, or `key`",
+                            other
+                        ),
+                    ));
+                }
             }
 
             if !input.is_empty() {
@@ -47,8 +69,11 @@ impl Parse for MacroArgs {
             }
         }
 
+        let cache_name = cache_name
+            .ok_or_else(|| syn::Error::new(input.span(), "missing required attribute `name`"))?;
+
         Ok(MacroArgs {
-            cache_name: cache_name.expect("name is required"),
+            cache_name,
             ttl,
             key_params,
         })
