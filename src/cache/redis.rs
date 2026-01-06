@@ -95,19 +95,32 @@ impl AppCache for RedisCache {
         let mut conn: PooledConnection<'_, Client> = self.get_conn().await?;
         let pattern = format!("{}:*", self.key_prefix);
 
-        let conn_ref: &mut MultiplexedConnection = &mut conn;
-        let keys: Vec<String> = redis::cmd("KEYS")
-            .arg(&pattern)
-            .query_async(conn_ref)
-            .await
-            .map_err(|e: RedisError| CacheError::Operation(e.to_string()))?;
-
-        if !keys.is_empty() {
+        // Use SCAN instead of KEYS to avoid blocking Redis
+        let mut cursor = 0u64;
+        loop {
             let conn_ref: &mut MultiplexedConnection = &mut conn;
-            conn_ref
-                .del::<_, ()>(keys)
+            let (next_cursor, keys): (u64, Vec<String>) = redis::cmd("SCAN")
+                .arg(cursor)
+                .arg("MATCH")
+                .arg(&pattern)
+                .arg("COUNT")
+                .arg(100)
+                .query_async(conn_ref)
                 .await
-                .map_err(|e| CacheError::Operation(e.to_string()))?;
+                .map_err(|e: RedisError| CacheError::Operation(e.to_string()))?;
+
+            if !keys.is_empty() {
+                let conn_ref: &mut MultiplexedConnection = &mut conn;
+                conn_ref
+                    .del::<_, ()>(&keys)
+                    .await
+                    .map_err(|e| CacheError::Operation(e.to_string()))?;
+            }
+
+            cursor = next_cursor;
+            if cursor == 0 {
+                break;
+            }
         }
 
         Ok(())
