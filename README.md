@@ -392,6 +392,11 @@ For detailed architecture documentation, see `CLAUDE.md` and `AGENTS.md`.
 - Request validation using the `validator` crate
 - CORS configuration for cross-origin requests
 
+## Related Projects
+
+- [bililive-go](https://github.com/bililive-go/bililive-go) - A live stream recording tool for Bilibili
+- [rust-srec](https://github.com/hua0512/rust-srec) - A Rust-based streaming recorder
+
 ## License
 
 Copyright (C) 2025
