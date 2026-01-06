@@ -116,15 +116,11 @@ impl AppCache for DiskCache {
         let store = self.store.lock().await;
         let db = store.connection();
 
-        // Collect all keys first to avoid borrowing issues
-        let keys: Vec<_> = db.iter().filter_map(|r| r.ok().map(|(k, _)| k)).collect();
-
-        // Remove all keys
-        for key in keys {
-            let _ = db.remove(&key);
-        }
-
-        let _ = db.flush();
+        // Use sled's clear (more efficient than iterating)
+        db.clear()
+            .map_err(|e| CacheError::Operation(e.to_string()))?;
+        db.flush()
+            .map_err(|e| CacheError::Operation(e.to_string()))?;
         Ok(())
     }
 }
