@@ -5,7 +5,9 @@ use crate::external::live::platform::LivePlatform;
 use crate::external::live::provider::LivePlatformProvider;
 use crate::external::live::types::{AnchorInfo, LiveStatus, RoomInfo, RoomStatusInfo};
 use async_trait::async_trait;
+use futures::future::join_all;
 use std::collections::HashMap;
+use tracing::warn;
 
 const ROOM_INFO_API: &str = "https://open.douyucdn.cn/api/RoomApi/room";
 const BETARD_API: &str = "https://www.douyu.com/betard";
@@ -162,40 +164,43 @@ impl LivePlatformProvider for DouyuLive {
     ) -> AppResult<HashMap<String, RoomStatusInfo>> {
         let mut result = HashMap::new();
 
-        for uid in uids {
-            match self.get_betard_info(uid).await {
-                Ok(betard_info) => {
-                    let room = &betard_info.room;
-                    result.insert(
-                        uid.to_string(),
-                        RoomStatusInfo {
-                            uid: room.owner_uid.to_string(),
-                            room_id: room.room_id.to_string(),
-                            title: room.room_name.clone(),
-                            live_status: Self::parse_live_status(room.show_status, room.video_loop),
-                            online: room.iol,
-                            uname: room.owner_name.clone(),
-                            face: room.avatar.get_best(),
-                            cover_url: if room.room_pic.is_empty() {
-                                None
-                            } else {
-                                Some(room.room_pic.clone())
-                            },
-                            area_name: if room.second_lvl_name.is_empty() {
-                                None
-                            } else {
-                                Some(room.second_lvl_name.clone())
-                            },
+        for chunk in uids.chunks(3) {
+            let futures = chunk.iter().map(|&uid| async move {
+                let betard_info = match self.get_betard_info(uid).await {
+                    Ok(info) => info,
+                    Err(e) => {
+                        warn!("Failed to get betard info for {}: {}", uid, e);
+                        return None;
+                    }
+                };
+
+                let room = &betard_info.room;
+                Some((
+                    uid.to_string(),
+                    RoomStatusInfo {
+                        uid: room.owner_uid.to_string(),
+                        room_id: room.room_id.to_string(),
+                        title: room.room_name.clone(),
+                        live_status: Self::parse_live_status(room.show_status, room.video_loop),
+                        online: room.iol,
+                        uname: room.owner_name.clone(),
+                        face: room.avatar.get_best(),
+                        cover_url: if room.room_pic.is_empty() {
+                            None
+                        } else {
+                            Some(room.room_pic.clone())
                         },
-                    );
-                }
-                Err(e) => {
-                    return Err(Self::make_error(
-                        format!("get_rooms_status_by_uids failed for uid {}: {}", uid, e),
-                        Some(e.into()),
-                    ));
-                }
-            }
+                        area_name: if room.second_lvl_name.is_empty() {
+                            None
+                        } else {
+                            Some(room.second_lvl_name.clone())
+                        },
+                    },
+                ))
+            });
+
+            let chunk_results = join_all(futures).await;
+            result.extend(chunk_results.into_iter().flatten());
         }
 
         Ok(result)
