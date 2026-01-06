@@ -8,6 +8,7 @@ use utoipa::ToSchema;
 pub enum LivePlatform {
     Bilibili,
     Douyin,
+    Douyu,
 }
 
 impl fmt::Display for LivePlatform {
@@ -15,6 +16,7 @@ impl fmt::Display for LivePlatform {
         match self {
             LivePlatform::Bilibili => write!(f, "bilibili"),
             LivePlatform::Douyin => write!(f, "douyin"),
+            LivePlatform::Douyu => write!(f, "douyu"),
         }
     }
 }
