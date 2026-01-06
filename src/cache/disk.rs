@@ -113,7 +113,18 @@ impl AppCache for DiskCache {
     }
 
     async fn clear(&self) -> Result<(), CacheError> {
-        // DiskCache doesn't have a built-in clear method
+        let store = self.store.lock().await;
+        let db = store.connection();
+
+        // Collect all keys first to avoid borrowing issues
+        let keys: Vec<_> = db.iter().filter_map(|r| r.ok().map(|(k, _)| k)).collect();
+
+        // Remove all keys
+        for key in keys {
+            let _ = db.remove(&key);
+        }
+
+        let _ = db.flush();
         Ok(())
     }
 }
@@ -153,5 +164,15 @@ mod tests {
         assert_eq!(cache.get("key").await.unwrap(), Some(b"value".to_vec()));
         tokio::time::sleep(Duration::from_secs(2)).await;
         assert_eq!(cache.get("key").await.unwrap(), None);
+    }
+
+    #[tokio::test]
+    async fn test_clear() {
+        let cache = DiskCache::new(&test_config(), "test_clear").unwrap();
+        cache.set("k1", b"v1".to_vec(), None).await.unwrap();
+        cache.set("k2", b"v2".to_vec(), None).await.unwrap();
+        cache.clear().await.unwrap();
+        assert_eq!(cache.get("k1").await.unwrap(), None);
+        assert_eq!(cache.get("k2").await.unwrap(), None);
     }
 }
