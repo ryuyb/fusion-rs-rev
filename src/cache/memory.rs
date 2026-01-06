@@ -1,28 +1,38 @@
-//! Memory cache implementation using cached::TimedSizedCache.
+//! Memory cache implementation with per-entry TTL support.
 
+use std::collections::HashMap;
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
-use cached::{Cached, TimedSizedCache};
 
 use crate::cache::{AppCache, CacheError};
 use crate::config::settings::MemoryCacheConfig;
 
-/// In-memory cache with size limit and TTL.
+struct CacheEntry {
+    value: Vec<u8>,
+    expires_at: Option<Instant>,
+}
+
+/// In-memory cache with size limit and per-entry TTL.
 pub struct MemoryCache {
-    store: Mutex<TimedSizedCache<String, Vec<u8>>>,
+    store: Mutex<HashMap<String, CacheEntry>>,
+    max_size: usize,
+    default_ttl: Duration,
 }
 
 impl MemoryCache {
     pub fn new(config: &MemoryCacheConfig) -> Self {
-        let store = TimedSizedCache::with_size_and_lifespan(
-            config.max_size,
-            Duration::from_secs(config.ttl_seconds),
-        );
         Self {
-            store: Mutex::new(store),
+            store: Mutex::new(HashMap::new()),
+            max_size: config.max_size,
+            default_ttl: Duration::from_secs(config.ttl_seconds),
         }
+    }
+
+    fn evict_expired(store: &mut HashMap<String, CacheEntry>) {
+        let now = Instant::now();
+        store.retain(|_, entry| entry.expires_at.is_none_or(|exp| exp > now));
     }
 }
 
@@ -33,20 +43,38 @@ impl AppCache for MemoryCache {
             .store
             .lock()
             .map_err(|e| CacheError::Operation(e.to_string()))?;
-        Ok(store.cache_get(key).cloned())
+
+        if let Some(entry) = store.get(key) {
+            if entry.expires_at.is_none_or(|exp| exp > Instant::now()) {
+                return Ok(Some(entry.value.clone()));
+            }
+            store.remove(key);
+        }
+        Ok(None)
     }
 
     async fn set(
         &self,
         key: &str,
         value: Vec<u8>,
-        _ttl_seconds: Option<u64>,
+        ttl_seconds: Option<u64>,
     ) -> Result<(), CacheError> {
         let mut store = self
             .store
             .lock()
             .map_err(|e| CacheError::Operation(e.to_string()))?;
-        store.cache_set(key.to_string(), value);
+
+        // Evict expired entries if at capacity
+        if store.len() >= self.max_size {
+            Self::evict_expired(&mut store);
+        }
+
+        let ttl = ttl_seconds
+            .map(Duration::from_secs)
+            .unwrap_or(self.default_ttl);
+        let expires_at = Some(Instant::now() + ttl);
+
+        store.insert(key.to_string(), CacheEntry { value, expires_at });
         Ok(())
     }
 
@@ -55,7 +83,7 @@ impl AppCache for MemoryCache {
             .store
             .lock()
             .map_err(|e| CacheError::Operation(e.to_string()))?;
-        store.cache_remove(key);
+        store.remove(key);
         Ok(())
     }
 
@@ -64,7 +92,7 @@ impl AppCache for MemoryCache {
             .store
             .lock()
             .map_err(|e| CacheError::Operation(e.to_string()))?;
-        store.cache_clear();
+        store.clear();
         Ok(())
     }
 }
