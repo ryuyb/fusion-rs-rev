@@ -1,22 +1,21 @@
-//! Memory cache implementation with per-entry TTL support.
+//! Memory cache implementation with per-entry TTL support using DashMap.
 
-use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
-use tokio::sync::Mutex;
+use dashmap::DashMap;
 
 use crate::cache::{AppCache, CacheError};
 use crate::config::settings::MemoryCacheConfig;
 
 struct CacheEntry {
     value: Vec<u8>,
-    expires_at: Option<Instant>,
+    expires_at: Instant,
 }
 
-/// In-memory cache with size limit and per-entry TTL.
+/// In-memory cache with size limit and per-entry TTL using DashMap for concurrent access.
 pub struct MemoryCache {
-    store: Mutex<HashMap<String, CacheEntry>>,
+    store: DashMap<String, CacheEntry>,
     max_size: usize,
     default_ttl: Duration,
 }
@@ -24,28 +23,27 @@ pub struct MemoryCache {
 impl MemoryCache {
     pub fn new(config: &MemoryCacheConfig) -> Self {
         Self {
-            store: Mutex::new(HashMap::new()),
+            store: DashMap::new(),
             max_size: config.max_size,
             default_ttl: Duration::from_secs(config.ttl_seconds),
         }
     }
 
-    fn evict_expired(store: &mut HashMap<String, CacheEntry>) {
+    fn evict_expired(&self) {
         let now = Instant::now();
-        store.retain(|_, entry| entry.expires_at.is_none_or(|exp| exp > now));
+        self.store.retain(|_, entry| entry.expires_at > now);
     }
 }
 
 #[async_trait]
 impl AppCache for MemoryCache {
     async fn get(&self, key: &str) -> Result<Option<Vec<u8>>, CacheError> {
-        let mut store = self.store.lock().await;
-
-        if let Some(entry) = store.get(key) {
-            if entry.expires_at.is_none_or(|exp| exp > Instant::now()) {
+        if let Some(entry) = self.store.get(key) {
+            if entry.expires_at > Instant::now() {
                 return Ok(Some(entry.value.clone()));
             }
-            store.remove(key);
+            drop(entry);
+            self.store.remove(key);
         }
         Ok(None)
     }
@@ -56,31 +54,28 @@ impl AppCache for MemoryCache {
         value: Vec<u8>,
         ttl_seconds: Option<u64>,
     ) -> Result<(), CacheError> {
-        let mut store = self.store.lock().await;
-
         // Evict expired entries if at capacity
-        if store.len() >= self.max_size {
-            Self::evict_expired(&mut store);
+        if self.store.len() >= self.max_size {
+            self.evict_expired();
         }
 
         let ttl = ttl_seconds
             .map(Duration::from_secs)
             .unwrap_or(self.default_ttl);
-        let expires_at = Some(Instant::now() + ttl);
+        let expires_at = Instant::now() + ttl;
 
-        store.insert(key.to_string(), CacheEntry { value, expires_at });
+        self.store
+            .insert(key.to_string(), CacheEntry { value, expires_at });
         Ok(())
     }
 
     async fn remove(&self, key: &str) -> Result<(), CacheError> {
-        let mut store = self.store.lock().await;
-        store.remove(key);
+        self.store.remove(key);
         Ok(())
     }
 
     async fn clear(&self) -> Result<(), CacheError> {
-        let mut store = self.store.lock().await;
-        store.clear();
+        self.store.clear();
         Ok(())
     }
 }
