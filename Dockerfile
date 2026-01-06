@@ -54,10 +54,12 @@ WORKDIR /app
 
 # Copy Cargo files
 COPY Cargo.toml Cargo.lock ./
+COPY macros/Cargo.toml ./macros/
 
 # Create dummy source to build dependencies
-RUN mkdir -p src && \
-    echo "fn main() {}" > src/main.rs
+RUN mkdir -p src macros/src && \
+    echo "fn main() {}" > src/main.rs && \
+    echo "" > macros/src/lib.rs
 
 # Build dependencies only with cache mounts
 RUN --mount=type=cache,target=/usr/local/cargo/registry,id=cargo-registry-${TARGETARCH} \
@@ -70,8 +72,9 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,id=cargo-registry-${TARG
     esac
 
 # Remove dummy source and copy real source code
-RUN rm -rf src
+RUN rm -rf src macros/src
 COPY src ./src
+COPY macros/src ./macros/src
 COPY migrations ./migrations
 COPY config ./config
 COPY diesel.toml ./
