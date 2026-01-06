@@ -6,6 +6,7 @@ pub const AUTH_TAG: &str = "Auth";
 pub const HEALTH_TAG: &str = "Health";
 pub const NOTIFICATION_TAG: &str = "Notifications";
 pub const JOB_TAG: &str = "Jobs";
+pub const LIVE_TAG: &str = "Live";
 
 #[derive(OpenApi)]
 #[openapi(
@@ -17,6 +18,7 @@ pub const JOB_TAG: &str = "Jobs";
     components(
         schemas(
             crate::api::dto::ErrorResponse,
+            crate::external::live::LivePlatform,
         )
     ),
     tags(
@@ -25,6 +27,7 @@ pub const JOB_TAG: &str = "Jobs";
         (name = HEALTH_TAG, description = "Health check endpoints"),
         (name = NOTIFICATION_TAG, description = "Notification channel and message endpoints"),
         (name = JOB_TAG, description = "Job scheduling endpoints"),
+        (name = LIVE_TAG, description = "Live streaming platform endpoints"),
     )
 )]
 pub struct ApiDoc;

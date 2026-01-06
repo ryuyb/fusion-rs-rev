@@ -1,9 +1,14 @@
+[workspace]
+members = ["macros"]
+resolver = "3"
+
 [package]
 name = "fusion-rs"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+macros = { path = "macros" }
 axum = { version = "0.8", features = ["json", "tracing"] }
 tokio = { version = "1.0", features = ["full"] }
 tokio-cron-scheduler = "0.15"
@@ -21,7 +26,9 @@ config = { version = "0.15", features = ["toml"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 validator = { version = "0.20", features = ["derive"] }
 
-cached = { version = "0.56", features = ["async", "async_tokio_rt_multi_thread"] }
+cached = { version = "0.56", default-features = false, features = ["disk_store"] }
+redis = { version = "1.0", features = ["tokio-comp", "bb8", "aio", "tls-rustls", "tokio-rustls-comp"] }
+bb8 = "0.9"
 
 # Async trait support for notification providers
 async-trait = "0.1"
@@ -59,6 +66,7 @@ utoipa-swagger-ui = { version = "9", features = ["axum"] }
 # CLI argument parsing
 clap = { version = "4.5", features = ["derive", "env"] }
 shadow-rs = { version = "1.5", default-features = false }
+dashmap = "6"
 
 [build-dependencies]
 shadow-rs = "1.5"

@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LiveStatus {
     Offline,
@@ -16,7 +18,7 @@ pub struct RoomInfo {
     pub area_name: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnchorInfo {
     pub uid: String,
     pub name: String,

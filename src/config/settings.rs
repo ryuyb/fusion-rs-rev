@@ -510,6 +510,34 @@ fn default_history_retention_days() -> u32 {
     30
 }
 
+fn default_cache_ttl() -> u64 {
+    300
+}
+
+fn default_cache_max_size() -> usize {
+    1000
+}
+
+fn default_cache_directory() -> String {
+    "cache".to_string()
+}
+
+fn default_redis_url() -> String {
+    "redis://127.0.0.1:6379".to_string()
+}
+
+fn default_redis_pool_size() -> u32 {
+    4
+}
+
+fn default_redis_connection_timeout() -> u64 {
+    5
+}
+
+fn default_redis_key_prefix() -> String {
+    "fusion".to_string()
+}
+
 /// Job scheduling configuration
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct JobsConfig {
@@ -552,6 +580,127 @@ impl Default for JobsConfig {
 }
 
 // ============================================================================
+// Cache Configuration
+// ============================================================================
+
+/// Cache backend type
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum CacheBackend {
+    #[default]
+    Memory,
+    Disk,
+    Redis,
+}
+
+/// Memory cache configuration
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MemoryCacheConfig {
+    /// Maximum number of entries in the cache
+    #[serde(default = "default_cache_max_size")]
+    pub max_size: usize,
+
+    /// Time-to-live in seconds
+    #[serde(default = "default_cache_ttl")]
+    pub ttl_seconds: u64,
+}
+
+impl Default for MemoryCacheConfig {
+    fn default() -> Self {
+        Self {
+            max_size: default_cache_max_size(),
+            ttl_seconds: default_cache_ttl(),
+        }
+    }
+}
+
+/// Disk cache configuration
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DiskCacheConfig {
+    /// Directory to store cache files
+    #[serde(default = "default_cache_directory")]
+    pub directory: String,
+
+    /// Time-to-live in seconds
+    #[serde(default = "default_cache_ttl")]
+    pub ttl_seconds: u64,
+}
+
+impl Default for DiskCacheConfig {
+    fn default() -> Self {
+        Self {
+            directory: default_cache_directory(),
+            ttl_seconds: default_cache_ttl(),
+        }
+    }
+}
+
+/// Redis cache configuration
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RedisCacheConfig {
+    /// Redis connection URL
+    #[serde(default = "default_redis_url")]
+    pub url: String,
+
+    /// Time-to-live in seconds
+    #[serde(default = "default_cache_ttl")]
+    pub ttl_seconds: u64,
+
+    /// Connection pool size
+    #[serde(default = "default_redis_pool_size")]
+    pub pool_size: u32,
+
+    /// Connection timeout in seconds
+    #[serde(default = "default_redis_connection_timeout")]
+    pub connection_timeout: u64,
+
+    /// Key prefix for all cache entries
+    #[serde(default = "default_redis_key_prefix")]
+    pub key_prefix: String,
+
+    /// Whether to use TLS
+    #[serde(default)]
+    pub tls_enabled: bool,
+}
+
+impl Default for RedisCacheConfig {
+    fn default() -> Self {
+        Self {
+            url: default_redis_url(),
+            ttl_seconds: default_cache_ttl(),
+            pool_size: default_redis_pool_size(),
+            connection_timeout: default_redis_connection_timeout(),
+            key_prefix: default_redis_key_prefix(),
+            tls_enabled: false,
+        }
+    }
+}
+
+/// Cache configuration
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct CacheConfig {
+    /// Whether caching is enabled
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Cache backend type
+    #[serde(default)]
+    pub backend: CacheBackend,
+
+    /// Memory cache settings
+    #[serde(default)]
+    pub memory: MemoryCacheConfig,
+
+    /// Disk cache settings
+    #[serde(default)]
+    pub disk: DiskCacheConfig,
+
+    /// Redis cache settings
+    #[serde(default)]
+    pub redis: RedisCacheConfig,
+}
+
+// ============================================================================
 // Main Settings Structure
 // ============================================================================
 
@@ -584,6 +733,10 @@ pub struct Settings {
     /// Job scheduling configuration
     #[serde(default)]
     pub jobs: JobsConfig,
+
+    /// Cache configuration
+    #[serde(default)]
+    pub cache: CacheConfig,
 }
 
 #[cfg(test)]
@@ -769,6 +922,10 @@ mod tests {
             )
     }
 
+    fn arb_cache_config() -> impl Strategy<Value = CacheConfig> {
+        Just(CacheConfig::default())
+    }
+
     fn arb_settings() -> impl Strategy<Value = Settings> {
         (
             arb_application_config(),
@@ -777,15 +934,17 @@ mod tests {
             arb_jwt_config(),
             arb_logger_settings(),
             arb_jobs_config(),
+            arb_cache_config(),
         )
             .prop_map(
-                |(application, server, database, jwt, logger, jobs)| Settings {
+                |(application, server, database, jwt, logger, jobs, cache)| Settings {
                     application,
                     server,
                     database,
                     jwt,
                     logger,
                     jobs,
+                    cache,
                 },
             )
     }

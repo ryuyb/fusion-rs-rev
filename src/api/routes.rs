@@ -29,8 +29,11 @@ use utoipa_swagger_ui::SwaggerUi;
 /// - `/api/auth/login` - Login endpoint - public
 /// - `/api/auth/register` - Register endpoint - public
 /// - `/api/auth/refresh` - Refresh token endpoint - public
+/// - `/api/live` - Live platform endpoints - public
 /// - `/api/me` - Current user endpoint - requires authentication
 /// - `/api/users` - User CRUD operations - requires authentication
+/// - `/api/jobs` - Job management endpoints - requires authentication
+/// - `/api/notifications` - Notification endpoints - requires authentication
 ///
 /// # Requirements
 /// - 2.1: Provides /api/users endpoint group
@@ -55,6 +58,7 @@ pub fn create_router(state: AppState) -> Router {
             handlers::notifications::notification_routes(),
         )
         .nest("/jobs", handlers::jobs::job_routes())
+        .nest("/live", handlers::live::live_routes())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             auth_middleware,
