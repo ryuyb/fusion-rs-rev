@@ -1,5 +1,6 @@
 //! Memory cache implementation with per-entry TTL support using DashMap.
 
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
@@ -18,7 +19,10 @@ pub struct MemoryCache {
     store: DashMap<String, CacheEntry>,
     max_size: usize,
     default_ttl: Duration,
+    op_counter: AtomicU64,
 }
+
+const EVICTION_INTERVAL: u64 = 100; // Evict every N operations
 
 impl MemoryCache {
     pub fn new(config: &MemoryCacheConfig) -> Self {
@@ -26,6 +30,7 @@ impl MemoryCache {
             store: DashMap::new(),
             max_size: config.max_size,
             default_ttl: Duration::from_secs(config.ttl_seconds),
+            op_counter: AtomicU64::new(0),
         }
     }
 
@@ -33,11 +38,20 @@ impl MemoryCache {
         let now = Instant::now();
         self.store.retain(|_, entry| entry.expires_at > now);
     }
+
+    fn maybe_evict(&self) {
+        let count = self.op_counter.fetch_add(1, Ordering::Relaxed);
+        // Evict periodically or when approaching capacity
+        if count.is_multiple_of(EVICTION_INTERVAL) || self.store.len() >= self.max_size * 3 / 4 {
+            self.evict_expired();
+        }
+    }
 }
 
 #[async_trait]
 impl AppCache for MemoryCache {
     async fn get(&self, key: &str) -> Result<Option<Vec<u8>>, CacheError> {
+        self.maybe_evict();
         if let Some(entry) = self.store.get(key) {
             if entry.expires_at > Instant::now() {
                 return Ok(Some(entry.value.clone()));
@@ -54,10 +68,7 @@ impl AppCache for MemoryCache {
         value: Vec<u8>,
         ttl_seconds: Option<u64>,
     ) -> Result<(), CacheError> {
-        // Evict expired entries if at capacity
-        if self.store.len() >= self.max_size {
-            self.evict_expired();
-        }
+        self.maybe_evict();
 
         let ttl = ttl_seconds
             .map(Duration::from_secs)
