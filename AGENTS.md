@@ -7,6 +7,7 @@ Rust web application using Axum, Diesel (PostgreSQL), and tokio. Layered archite
 ## Build & Test Commands
 
 ```bash
+export DATABASE_URL="postgres://postgres:postgres@localhost/fusion_rs"  # Set database URL
 cargo build                    # Debug build
 cargo build --release          # Release build
 cargo run                      # Run with default config
@@ -17,6 +18,11 @@ cargo clippy                   # Run linter
 cargo test                     # Run all tests
 cargo test <test_name>         # Run single test by name
 cargo test <module>::          # Run tests in module (e.g., cargo test logger::)
+```
+
+Or with inline DATABASE_URL:
+```bash
+DATABASE_URL="postgres://postgres:postgres@localhost/fusion_rs" diesel migration run
 ```
 
 ## Project Structure
@@ -148,6 +154,16 @@ proptest! {
 
 - Migrations: `migrations/` - run with `diesel migration run`
 - Schema: `src/schema.rs` (auto-generated) - regenerate with `diesel print-schema`
+
+**Required environment setup:**
+```bash
+export DATABASE_URL="postgres://postgres:postgres@localhost/fusion_rs"
+```
+
+Or for commands that don't support env vars:
+```bash
+DATABASE_URL="postgres://postgres:postgres@localhost/fusion_rs" diesel migration run
+```
 
 ## Configuration
 

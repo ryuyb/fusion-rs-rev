@@ -2,12 +2,13 @@
 //!
 //! Provides notification channel management and message sending functionality.
 
+use super::bark_provider::BarkProvider;
 use super::provider::{NotificationMessage, NotificationProvider};
 use super::webhook_provider::WebhookProvider;
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    ChannelType, NewNotificationChannel, NewNotificationLog, NotificationChannel, NotificationLog,
-    NotificationStatus, UpdateNotificationChannel, WebhookConfig,
+    BarkConfig, ChannelType, NewNotificationChannel, NewNotificationLog, NotificationChannel,
+    NotificationLog, NotificationStatus, UpdateNotificationChannel, WebhookConfig,
 };
 use crate::repositories::{NotificationChannelRepository, NotificationLogRepository};
 use std::sync::Arc;
@@ -331,6 +332,14 @@ impl NotificationService {
                 })?;
                 Ok(Arc::new(WebhookProvider::new(config)))
             }
+            ChannelType::Bark => {
+                let config =
+                    BarkConfig::from_json(&channel.config).map_err(|e| AppError::Validation {
+                        field: "config".to_string(),
+                        reason: format!("Invalid bark config: {}", e),
+                    })?;
+                Ok(Arc::new(BarkProvider::new(config)))
+            }
             // Future providers:
             // ChannelType::Email => { ... }
             // ChannelType::Sms => { ... }
@@ -366,6 +375,18 @@ impl NotificationService {
 
                 // Create provider and validate
                 let provider = WebhookProvider::new(webhook_config);
+                provider.validate_config().await?;
+            }
+            ChannelType::Bark => {
+                // Parse config
+                let bark_config =
+                    BarkConfig::from_json(config).map_err(|e| AppError::Validation {
+                        field: "config".to_string(),
+                        reason: format!("Invalid bark config: {}", e),
+                    })?;
+
+                // Create provider and validate
+                let provider = BarkProvider::new(bark_config);
                 provider.validate_config().await?;
             }
             // Future validations:

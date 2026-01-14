@@ -33,6 +33,7 @@ pub enum ChannelType {
     Sms,
     Discord,
     Slack,
+    Bark,
 }
 
 /// Status of a notification log entry
@@ -182,5 +183,115 @@ impl WebhookConfig {
     /// ```
     pub fn to_json(&self) -> Result<JsonValue, serde_json::Error> {
         serde_json::to_value(self)
+    }
+}
+
+// ============================================================================
+// Bark Config
+// ============================================================================
+
+/// Bark-specific notification configuration
+///
+/// Bark is an iOS push notification service that supports custom icons, sounds,
+/// and interapp navigation. This config stores the Bark server URL and device key.
+///
+/// # Example JSON Config
+/// ```json
+/// {
+///     "device_key": "YourDeviceKey",
+///     "icon": "https://example.com/icon.png",
+///     "sound": "notification.wav",
+///     "level": "timeSensitive",
+///     "url": "https://example.com/deep-link",
+///     "group": "app-notifications",
+///     "auto_copy": 1,
+///     "is_archive": 1
+/// }
+/// ```
+///
+/// Note: `server_url` is optional and defaults to `https://api.day.app`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BarkConfig {
+    /// Bark server base URL (optional, defaults to "https://api.day.app")
+    #[serde(default = "default_server_url")]
+    pub server_url: String,
+
+    /// Device key for authentication with Bark server
+    pub device_key: String,
+
+    /// Custom icon URL (optional, defaults to app icon)
+    #[serde(default)]
+    pub icon: Option<String>,
+
+    /// Notification sound name (optional, defaults to system default)
+    #[serde(default)]
+    pub sound: Option<String>,
+
+    /// Notification urgency level (optional)
+    /// Values: "passive", "active", "timeSensitive"
+    #[serde(default)]
+    pub level: Option<String>,
+
+    /// Deep link URL to open when notification is tapped (optional)
+    #[serde(default)]
+    pub url: Option<String>,
+
+    /// Notification group/bundle identifier (optional)
+    #[serde(default)]
+    pub group: Option<String>,
+
+    /// Automatically copy notification content to clipboard (optional)
+    /// 1 = enabled, 0 = disabled
+    #[serde(default = "default_auto_copy")]
+    pub auto_copy: u8,
+
+    /// Archive notification in Bark app (optional)
+    /// 1 = enabled, 0 = disabled
+    #[serde(default = "default_is_archive")]
+    pub is_archive: u8,
+}
+
+fn default_server_url() -> String {
+    "https://api.day.app".to_string()
+}
+
+fn default_auto_copy() -> u8 {
+    0
+}
+
+fn default_is_archive() -> u8 {
+    0
+}
+
+impl BarkConfig {
+    /// Parse JSONB config into typed BarkConfig
+    ///
+    /// # Arguments
+    /// * `config` - The JSONB value from the database
+    ///
+    /// # Returns
+    /// Result containing the parsed config or deserialization error
+    pub fn from_json(config: &JsonValue) -> Result<Self, serde_json::Error> {
+        serde_json::from_value(config.clone())
+    }
+
+    /// Convert to JSONB for database storage
+    ///
+    /// # Returns
+    /// Result containing the JSONB value or serialization error
+    pub fn to_json(&self) -> Result<JsonValue, serde_json::Error> {
+        serde_json::to_value(self)
+    }
+
+    /// Builds the full Bark API URL from server URL and device key
+    ///
+    /// # Returns
+    /// Full URL for Bark push notification endpoint
+    pub fn build_api_url(&self) -> String {
+        format!(
+            "{}/{}",
+            self.server_url.trim_end_matches('/'),
+            self.device_key
+        )
     }
 }

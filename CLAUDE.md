@@ -10,6 +10,7 @@ fusion-rs is a production-ready Rust web application built with Axum, Diesel (Po
 
 ### Development
 ```bash
+export DATABASE_URL="postgres://postgres:postgres@localhost/fusion_rs"  # Set database URL
 cargo build                    # Debug build
 cargo build --release          # Release build (optimized)
 cargo run                      # Run with default config
@@ -30,6 +31,7 @@ cargo test -- --ignored        # Run ignored tests (network tests)
 
 ### Database
 ```bash
+export DATABASE_URL="postgres://postgres:postgres@localhost/fusion_rs"
 diesel migration run           # Apply migrations
 diesel migration revert        # Revert last migration
 diesel print-schema            # Regenerate schema.rs (don't edit manually)

@@ -13,23 +13,34 @@ use validator::Validate;
 
 /// Request to create a notification channel
 #[derive(Debug, Deserialize, ToSchema, Validate)]
-#[schema(example = json!({
-    "channel_type": "webhook",
-    "name": "My Webhook",
-    "config": {
-        "url": "https://webhook.site/unique-id",
-        "method": "POST",
-        "headers": {
-            "Content-Type": "application/json",
-            "X-Api-Key": "your-api-key"
+#[schema(examples(
+    json!({
+        "channel_type": "bark",
+        "name": "My iPhone",
+        "config": {
+            "device_key": "YourDeviceKey"
         },
-        "timeout_seconds": 30
-    },
-    "enabled": true,
-    "priority": 10
-}))]
+        "enabled": true,
+        "priority": 10
+    }),
+    json!({
+        "channel_type": "webhook",
+        "name": "Alert Webhook",
+        "config": {
+            "url": "https://webhook.site/unique-id",
+            "method": "POST",
+            "headers": {
+                "Content-Type": "application/json",
+                "X-Api-Key": "your-api-key"
+            },
+            "timeout_seconds": 30
+        },
+        "enabled": true,
+        "priority": 5
+    })
+))]
 pub struct CreateChannelRequest {
-    /// Type of notification channel (webhook, email, sms, discord, slack)
+    /// Type of notification channel (webhook, email, sms, discord, slack, bark)
     pub channel_type: ChannelType,
 
     #[validate(length(min = 1, max = 255, message = "Name must be 1-255 characters"))]
@@ -37,15 +48,12 @@ pub struct CreateChannelRequest {
     pub name: String,
 
     /// Channel-specific configuration as JSON object.
-    /// For webhook: {"url": "https://...", "method": "POST", "headers": {...}, "timeout_seconds": 30}
-    #[schema(value_type = Object, example = json!({
-        "url": "https://webhook.site/unique-id",
-        "method": "POST",
-        "headers": {
-            "Content-Type": "application/json"
-        },
-        "timeout_seconds": 30
-    }))]
+    /// For bark: {"device_key": "...", "server_url": "...", "icon": "...", "sound": "...", "level": "..."}
+    /// For webhook: {"url": "...", "method": "POST", "headers": {...}, "timeout_seconds": 30}
+    #[schema(value_type = Object, examples(
+        json!({"device_key": "YourDeviceKey"}),
+        json!({"url": "https://webhook.site/unique-id", "method": "POST", "headers": {"Content-Type": "application/json"}, "timeout_seconds": 30})
+    ))]
     pub config: JsonValue,
 
     #[serde(default = "default_true")]

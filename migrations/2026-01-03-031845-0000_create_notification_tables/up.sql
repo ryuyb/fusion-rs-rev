@@ -1,7 +1,7 @@
 -- ============================================================================
 -- Create PostgreSQL ENUM types
 -- ============================================================================
-CREATE TYPE channel_type AS ENUM ('webhook', 'email', 'sms', 'discord', 'slack');
+CREATE TYPE channel_type AS ENUM ('webhook', 'email', 'sms', 'discord', 'slack', 'bark');
 CREATE TYPE notification_status AS ENUM ('pending', 'sent', 'failed', 'retrying');
 
 -- ============================================================================
